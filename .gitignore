@@ -123,3 +123,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# useless packages and licenses
+**.lic
+**.tar.gz
+**.deb
+**.save
+**.d
+**.bin
+**.cfg
