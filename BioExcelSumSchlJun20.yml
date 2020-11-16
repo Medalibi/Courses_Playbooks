@@ -1,0 +1,380 @@
+---
+- name: BioExcel Summer School June 2020 build playbook on 14-05-2020
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+
+  - name: Install python3 packages
+    shell: pip3 install -U matplotlib numpy notebook jupyter
+
+  - name: Install python packages
+    shell: pip install -U matplotlib numpy notebook jupyter
+
+# R and Rstudio ################################################
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+#  - name: Configure Java8 for Rjava
+#    shell: update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+
+#  - name: Fix Rjava package
+#    shell: R CMD javarconfig JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install rstudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.5042-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+          BiocManager::install(update = TRUE, ask = FALSE)
+          BiocManager::install(c("fpc", "cluster", "flashClust"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Pymol edu ################################################
+  - name: Download and extract Pymol Edu archive
+    unarchive:
+      src: "https://pymol.org/installers/PyMOL-2.3.4_121-Linux-x86_64-py37.tar.bz2"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Copy Pymol licence file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/pymol-edu-license.lic
+      dest: /usr/local/pymol/share/pymol/license.lic
+      mode: 0777
+
+  - name: Create Pymol Symlink
+    file:
+      src: /usr/local/pymol/pymol
+      dest: /usr/local/bin/pymol
+      state: link
+    ignore_errors: yes
+
+  - name: Create Pymol Desktop file
+    file:
+      path: /home/training/Desktop/pymol.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Pymol Desktop file
+    blockinfile:
+      path: /home/training/Desktop/pymol.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Pymol 2.3
+        Icon=/usr/local/pymol/share/pymol/data/pymol/icons/icon2_128x128.png
+        Exec=/usr/local/pymol/pymol
+
+# Chimera  ################################################
+  - name: Copy Chimera bin file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/chimera-1.14-linux_x86_64.bin
+      dest: /usr/local/chimera.bin
+      mode: 0777
+
+  - name: Install Chimera
+    shell: echo /usr/local/chimera | /usr/local/chimera.bin
+
+  - name: Create Chimera Symlink
+    file:
+      src: /usr/local/chimera/bin/chimera
+      dest: /usr/local/bin/chimera
+      state: link
+    ignore_errors: yes
+
+  - name: Install Chimera Desktop icon
+    shell: /usr/local/chimera/bin/xdg-setup install
+    become: yes
+    become_user: training
+    ignore_errors: yes
+
+  #- name: Delete Chimera installer
+  #  file:
+  #    path: /usr/local/chimera.bin
+  #    state: absent
+  #  ignore_errors: yes
+
+# VMD  ################################################
+  - name: Copy VMD archive
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/vmd-1.9.3.bin.LINUXAMD64-CUDA8-OptiX4-OSPRay111p1.opengl.tar.gz
+      dest: /usr/local/vmd.tar.gz
+      mode: 0777
+
+  - name: Extract VMD archive
+    unarchive:
+      src: /usr/local/vmd.tar.gz
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile VMD
+    shell: |
+      ./configure LINUXAMD64
+      cd ./src
+      make
+      make install
+    args:
+      chdir: /usr/local/vmd-1.9.3
+
+  - name: Fix VMD SSE4.1. requirements
+    shell: |
+      echo "export VMDNOOSPRAY=1" >> /home/training/.profile
+      echo "export VMDNOOSPRAY=1" >> /home/training/.bashrc
+      echo "export VMDNOOSPRAY=1" >> /etc/bash.bashrc
+
+  - name: Delete VMD archive
+    file:
+      path: /usr/local/vmd.tar.gz
+      state: absent
+      ignore_errors: yes
+
+# Anaconda  ################################################
+  - name: Download Anaconda3
+    get_url:
+      url: "https://repo.anaconda.com/archive/Anaconda3-2020.02-Linux-x86_64.sh"
+      dest: /usr/local/Anaconda3.sh
+      mode: '0777'
+
+  - name: Install Anaconda3
+    shell: /usr/local/Anaconda3.sh -b
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+  - name: Create Conda Symlink
+    file:
+      src: /home/training/anaconda3/condabin/conda
+      dest: /usr/local/bin/conda
+      state: link
+    ignore_errors: yes
+
+  - name: Install rdkit
+    shell: conda install -y -c rdkit rdkit
+
+  - name: Delete Anaconda installer
+    file:
+      path: /usr/local/Anaconda3.sh
+      state: absent
+    ignore_errors: yes
+
+# Gromacs 2019.5  ################################################
+  - name: install Gromacs deps
+    shell: apt install -y doxygen libnl-utils graphviz fftw-dev fftw-docs fftw2 libfftw3-3 libfftw3-bin libfftw3-dev libfftw3-doc libfftw3-long3 libfftw3-quad3 sfftw-dev sfftw2 libopenmpi-dev
+
+  - name: Download and extract Gromacs 2019.5 archive
+    unarchive:
+      src: "ftp://ftp.gromacs.org/pub/gromacs/gromacs-2019.5.tar.gz"
+      dest: /home/training/
+      remote_src: yes
+      mode: '0777'
+      owner: training
+
+  - name: Compile Gromacs 2019.5
+    shell: |
+      mkdir build
+      cd ./build
+      cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON -DGMX_MPI=on
+      make -j 8
+      make check -j 8
+      make install
+    args:
+      chdir: /home/training/gromacs-2019.5
+
+
+# Gromacs 2020.2  ################################################
+  - name: install Gromacs deps
+    shell: apt install -y doxygen libnl-utils graphviz fftw-dev fftw-docs fftw2 libfftw3-3 libfftw3-bin libfftw3-dev libfftw3-doc libfftw3-long3 libfftw3-quad3 sfftw-dev sfftw2 libopenmpi-dev
+
+  - name: Download and extract Gromacs 2020.2 archive
+    unarchive:
+      src: "ftp://ftp.gromacs.org/pub/gromacs/gromacs-2020.2.tar.gz"
+      dest: /home/training/
+      remote_src: yes
+      mode: '0777'
+      owner: training
+
+  - name: Compile Gromacs 2020.2
+    shell: |
+      mkdir build
+      cd ./build
+      cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON -DGMX_MPI=on
+      make -j 8
+      make check -j 8
+      make install
+    args:
+      chdir: /home/training/gromacs-2020.2
+
+
+
+# Plumed 2.5  ################################################
+  - name: Download and extract Plumed 2.5 archive
+    unarchive:
+      src: "https://github.com/plumed/plumed2/releases/download/v2.5.4/plumed-2.5.4.tgz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Plumed with MPI
+    shell: |
+      ./configure --prefix=/usr/local/ CXX=mpic++ --enable-mpi
+      make -j 8
+      make check -j 8
+      make install
+    args:
+      chdir: /usr/local/plumed-2.5.4/
+
+  - name: Patch Gromacs 2019 with Plumed
+    shell: plumed patch -p -e gromacs-2019.4
+    args: 
+      chdir: /home/training/gromacs-2019.5/
+
+
+# PMX ################################################
+  - name: Download pmx opensource
+    git:
+      repo: https://github.com/deGrootLab/pmx.git
+      dest: /usr/local/pmx
+    ignore_errors: yes
+
+  - name: Change pmx folder permissions
+    file:
+      path: /usr/local/pmx
+      mode: '0777'
+      recurse: yes
+
+  - name: Install pmx python3 packages
+    shell: pip3 install -U matplotlib numpy scipy
+
+  - name: Install pmx
+    shell: |
+      python3 setup.py install
+      pip3 install .
+    args:
+      chdir:  /usr/local/pmx
+
+
+#   ################################################

@@ -1,0 +1,160 @@
+---
+- name: Data Vis Mar 20 build playbook on 28-02-2020
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - subversion
+
+# R and Rstudio ################################################
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+#  - name: Configure Java8 for Rjava
+#    shell: update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+
+#  - name: Fix Rjava package
+#    shell: R CMD javarconfig JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install rstudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.5019-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Code ################################################
+
+# apt install ./ file gdebihttps://go.microsoft.com/fwlink/?LinkID=760868
+
+# Node ################################################
+  - name: Download and extract node archive
+    unarchive:
+      src: "https://nodejs.org/dist/v13.9.0/node-v13.9.0-linux-x64.tar.xz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+  - name: setup gpg key for node
+    shell:
+      gpg --keyserver pool.sks-keyservers.net --recv-keys 4ED778F539E3634C779C87C6D7062848A1AB005C
+      gpg --keyserver pool.sks-keyservers.net --recv-keys B9E2F5981AA6E0CD28160D9FF13993A75599653C
+      gpg --keyserver pool.sks-keyservers.net --recv-keys 94AE36675C464D64BAFA68DD7434390BDBE9B9C5
+      gpg --keyserver pool.sks-keyservers.net --recv-keys B9AE9905FFD7803F25714661B63B535A4C206CA9
+      gpg --keyserver pool.sks-keyservers.net --recv-keys 77984A986EBC2AA786BC0F66B01FBB92821C587A
+      gpg --keyserver pool.sks-keyservers.net --recv-keys 71DCFD284A79C3B38668286BC97EC7A07EDE3FC1
+      gpg --keyserver pool.sks-keyservers.net --recv-keys FD3A5288F042B6850C66B31F09FE44734EB7990E
+      gpg --keyserver pool.sks-keyservers.net --recv-keys 8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600
+      gpg --keyserver pool.sks-keyservers.net --recv-keys C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8
+      gpg --keyserver pool.sks-keyservers.net --recv-keys DD8F2338BAE7501E3DD5AC78C273792F7D83545D
+      gpg --keyserver pool.sks-keyservers.net --recv-keys A48C2BEE680E841632CD4E44F07496B3EB3C1762
+
+  - name: Create a symlink for Node
+    file:
+      src: /usr/local/node-v13.9.0-linux-x64/bin/node
+      dest: /usr/local/bin/node
+      state: link
+    ignore_errors: yes

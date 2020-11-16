@@ -1,0 +1,229 @@
+---
+- name: Protein Biology March 24 build playbook on 24-02-2020
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - default-jre
+      - default-jdk
+      - gdebi
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - perl
+      - subversion
+      - python-apt
+
+  - name: Configure Java11 JRE
+    shell: update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
+
+  - name: Configure Java11 JDK
+    shell: update-alternatives --set javac /usr/lib/jvm/java-11-openjdk-amd64/bin/javac
+
+  - name: Download the course data
+    shell: |
+      echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> /home/training/.profile
+      echo "export PATH=$PATH:$JAVA_HOME/bin" >> /home/training/.profile
+      echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> /home/training/.bashrc
+      echo "export PATH=$PATH:$JAVA_HOME/bin" >> /home/training/.bashrc
+      echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> /etc/bash.bashrc
+      echo "export PATH=$PATH:$JAVA_HOME/bin" >> /etc/bash.bashrc
+
+# InterPro Scan ################################################
+  - name: Download and extract InterPro Scan archive
+    unarchive:
+      src: "ftp://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.40-77.0/interproscan-5.40-77.0-64-bit.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create a symlink for interpro
+    file:
+      src: /usr/local/interproscan-5.40-77.0/interproscan.sh
+      dest: /usr/local/bin/interproscan
+      state: link
+    ignore_errors: yes
+
+# Pymol edu ################################################
+  - name: Download and extract Pymol Edu archive
+    unarchive:
+      src: "https://pymol.org/installers/PyMOL-2.3.4_121-Linux-x86_64-py37.tar.bz2"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Copy Pymol licence file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/pymol-edu-license.lic
+      dest: /usr/local/pymol/share/pymol/license.lic
+      mode: 0777
+
+  - name: Create Pymol Symlink
+    file:
+      src: /usr/local/pymol/pymol
+      dest: /usr/local/bin/pymol
+      state: link
+    ignore_errors: yes
+
+  - name: Create Pymol Desktop file
+    file:
+      path: /home/training/Desktop/pymol.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Pymol Desktop file
+    blockinfile:
+      path: /home/training/Desktop/pymol.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Pymol 2.3
+        Icon=/usr/local/pymol/share/pymol/data/pymol/icons/icon2_128x128.png
+        Exec=/usr/local/pymol/pymol
+
+# Fiji  ################################################
+  - name: Download and extract Fiji archive
+    unarchive:
+      src: "https://downloads.imagej.net/fiji/latest/fiji-linux64.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Fiji Symlink
+    file:
+      src: /usr/local/Fiji.app/ImageJ-linux64
+      dest: /usr/local/bin/ImageJ
+      state: link
+    ignore_errors: yes
+
+  - name: Create Fiji Desktop file
+    file:
+      path: /home/training/Desktop/fiji.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Fiji Desktop file
+    blockinfile:
+      path: /home/training/Desktop/fiji.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=ImageJ2 (Fiji)
+        Icon=/usr/local/Fiji.app/images/icon.png
+        Exec=/usr/local/Fiji.app/ImageJ-linux64
+
+# Chimerax  ################################################
+  - name: Copy Chimerax deb file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/ucsf-chimerax_0.91_amd64.deb
+      dest: /usr/local/chimerax.deb
+      mode: 0777
+
+  - name: Install Chimerax Deb package
+    apt:
+      deb: /usr/local/chimerax.deb
+
+  - name: Copy Chimerax Desktop file
+    copy:
+      src: /usr/share/applications/UCSF-ChimeraX-0.91.desktop
+      dest: /home/training/Desktop/UCSF-ChimeraX-0.91.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Delete Chimerax installer
+    file:
+      path: /usr/local/chimerax.deb
+      state: absent
+    ignore_errors: yes
+
+# Jupyter ################################################
+  - name: Install Jupyter
+    shell: pip3 install -U jupyter
+
+# Chimera  ################################################
+  - name: Copy Chimera bin file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/chimera-1.14-linux_x86_64.bin
+      dest: /usr/local/chimera.bin
+      mode: 0777
+
+  - name: Install Chimera
+    shell: echo /usr/local/chimera | /usr/local/chimera.bin
+
+  - name: Create Chimera Symlink
+    file:
+      src: /usr/local/chimera/bin/chimera
+      dest: /usr/local/bin/chimera
+      state: link
+    ignore_errors: yes
+
+  - name: Install Chimera Desktop icon
+    shell: /usr/local/chimera/bin/xdg-setup install
+    become: yes
+    become_user: training
+    ignore_errors: yes
+
+  - name: Delete Chimera installer
+    file:
+      path: /usr/local/chimera.bin
+      state: absent
+    ignore_errors: yes
+
+# Aspera Connect  ################################################
+  - name: Download and extract aspera archive
+    unarchive:
+      src: "https://download.asperasoft.com/download/sw/connect/3.9.8/ibm-aspera-connect-3.9.8.176272-linux-g2.12-64.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install Aspera
+    shell: /usr/local/ibm-aspera-connect-3.9.8.176272-linux-g2.12-64.sh
+    become: yes
+    become_user: training
+    ignore_errors: yes

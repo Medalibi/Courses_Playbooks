@@ -1,0 +1,453 @@
+---
+- name: Cancer Genomics July 2020 build playbook on 23-06-2020
+  hosts: coursevm
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - cpanminus
+      - fuse
+      - libmagick++-dev
+
+  - name: Install python3 packages
+    shell: pip3 install -U scipy numpy notebook jupyter
+
+  - name: Install python packages
+    shell: pip install -U scipy numpy notebook jupyter
+#
+# R and Rstudio ################################################
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+#  - name: Configure Java8 for Rjava
+#    shell: update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+
+#  - name: Fix Rjava package
+#    shell: R CMD javarconfig JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install rstudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.5042-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager", quietly = TRUE))
+           install.packages("BiocManager")
+          BiocManager::install(update = TRUE, quietly = TRUE)
+          BiocManager::install(c("DNAcopy", "gplots", "ggplot2", "xtable", "chimeraviz", "DESeq2", "rtracklayer", "tximport", "tximeta", "Rsubread", "dplyr", "rjson", "knitr", "rmarkdown"), quietly = TRUE)
+          install.packages("devtools", quietly = TRUE)
+          library(devtools)
+          install_github("francescojm/CRISPRcleanR", quietly = TRUE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+#
+# Mageck ################################################
+  - name: Download and extract Mageck archive
+    unarchive:
+      src: "https://downloads.sourceforge.net/project/mageck/0.5/mageck-0.5.9.3.tar.gz?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fmageck%2Ffiles%2Flatest%2Fdownload&ts=1592928554"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install Mageck
+    shell: python3 setup.py install
+    args:
+      chdir: /usr/local/mageck-0.5.9.3/
+#
+# IGV ################################################
+
+  - name: Download and extract IGV archive
+    unarchive:
+      src: "https://data.broadinstitute.org/igv/projects/downloads/2.8/IGV_Linux_2.8.4.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install  with Expect
+    shell: |
+      sed -i 's/\"$prefix\"/\/usr\/local\/IGV_Linux_2.8.4/g' /usr/local/IGV_Linux_2.8.4/igv.sh
+      ln -sf /usr/local/IGV_Linux_2.8.4/igv.sh /usr/local/bin/igv
+    ignore_errors: yes
+
+  - name: Create IGV Desktop file
+    file:
+      path: /home/training/Desktop/igv.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in IGV Desktop file
+    blockinfile:
+      path: /home/training/Desktop/igv.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=IGV 2.8.4
+        Icon=/usr/local/IGV_Linux_2.8.4/IGV_64.png
+        Exec=/usr/local/IGV_Linux_2.8.4/igv.sh
+#
+# STAR ################################################
+  - name: Download and extract STAR archive
+    unarchive:
+      src: "https://github.com/alexdobin/STAR/archive/2.7.5a.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile STAR
+    shell: |
+      make STAR
+      make install
+    args:
+      chdir: /usr/local/STAR-2.7.5a/source
+    ignore_errors: yes
+
+  - name: Create Symlink for all the tools within STAR
+    shell: ln -s /usr/local/STAR-2.7.5a/bin/Linux_x86_64/STAR* /usr/local/bin/
+    ignore_errors: yes
+#
+# Samtools ################################################
+
+  - name: Download and extract Samtools archives
+    unarchive:
+      src:  '{{ item }}'
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+    with_items:
+      - "https://github.com/samtools/htslib/releases/download/1.10.2/htslib-1.10.2.tar.bz2"
+      - "https://github.com/samtools/samtools/releases/download/1.10/samtools-1.10.tar.bz2"
+      - "https://github.com/samtools/bcftools/releases/download/1.10.2/bcftools-1.10.2.tar.bz2"
+
+  - name: Install Samtools dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+
+  - name: Compile Samtools
+    shell: |
+      ./configure
+      make
+      make install
+    args:
+      chdir: "{{ item }}"
+    with_items:
+      - "/usr/local/htslib-1.10.2"
+      - "/usr/local/samtools-1.10"
+      - "/usr/local/bcftools-1.10.2"
+#
+# STAR Fusion ################################################
+#  - name: Download and extract STAR Fusion archive
+#    unarchive:
+#      src: "https://github.com/STAR-Fusion/STAR-Fusion/releases/download/STAR-Fusion-v1.9.0/STAR-Fusion.v1.9.0.FULL.tar.gz"
+#      dest: /usr/local/
+#      remote_src: yes
+#      mode: '0777'
+
+  - name: Download STAR-Fusion git repo
+    git:
+      repo: https://github.com/STAR-Fusion/STAR-Fusion.git
+      dest: /usr/local/STAR-Fusion.v1.9.0
+      recursive: yes
+    ignore_errors: yes
+
+  - name: Change folder permission for Star-Fusion
+    file:
+      path: /usr/local/STAR-Fusion.v1.9.0
+      mode: '0777'
+
+  - name: Install Perl packages
+    cpanm:
+      name: "{{ item }}"
+    with_items:
+      - "DB_File"
+      - "URI::Escape"
+      - "Set::IntervalTree"
+      - "Carp::Assert"
+      - "JSON::XS"
+      - "PerlIO::gzip"
+
+  - name: Compile STAR-Fusion
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/STAR-Fusion.v1.9.0
+    ignore_errors: yes
+
+  - name: Create STAR-Fusion Symlink
+    file:
+      src: /usr/local/STAR-Fusion.v1.9.0/STAR-Fusion
+      dest: /usr/local/bin/STAR-Fusion
+      state: link
+    ignore_errors: yes
+#
+# Minimap2 ################################################
+  - name: Download and extract Minimap2 archive
+    unarchive:
+      src: "https://github.com/lh3/minimap2/releases/download/v2.17/minimap2-2.17_x64-linux.tar.bz2"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Minimap2 Symlink
+    file:
+      src: /usr/local/minimap2-2.17_x64-linux/minimap2
+      dest: /usr/local/bin/minimap2
+      state: link
+    ignore_errors: yes
+#
+# Salmon ################################################
+  - name: Download and extract Salmon archive
+    unarchive:
+      src: "https://github.com/COMBINE-lab/salmon/releases/download/v1.2.1/salmon-1.2.1_linux_x86_64.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Salmon Symlink
+    file:
+      src: /usr/local/salmon-latest_linux_x86_64/bin/salmon
+      dest: /usr/local/bin/salmon
+      state: link
+    ignore_errors: yes
+#
+# Bamseek ################################################
+  - name: Create Bamseek dir
+    file:
+      path: /usr/local/bamseek
+      state: directory
+      mode: '0777'
+    ignore_errors: yes
+
+  - name: Download bamseek
+    get_url:
+      url: "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/bamseek/BAMseek2011July24.jar"
+      dest: /usr/local/bamseek/BAMseek.jar
+      mode: '0777'
+
+  - name: Download Bamssek in home folder
+    get_url:
+      url: "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/bamseek/BAMseek2011July24.jar"
+      dest: /home/training/BAMseek.jar
+      mode: '0777'
+
+  - name: Create Bamseek bash executable
+    file:
+      path: /usr/local/bamseek/bamseek
+      state: touch
+      mode: '0777'
+
+  - name: Fill in Bamseek bash executable
+    blockinfile:
+      path: /usr/local/bamseek/bamseek
+      block: |
+        #!/bin/bash
+        java -jar /usr/local/bamseek/BAMseek.jar $@
+
+  - name: Create Bamseek Symlink
+    file:
+      src: /usr/local/bamseek/bamseek
+      dest: /usr/local/bin/bamseek
+      state: link
+    ignore_errors: yes
+
+  - name: Create Bamseek Desktop file
+    file:
+      path: /home/training/Desktop/Bamseek.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Bamseek Desktop file
+    blockinfile:
+      path: /home/training/Desktop/Bamseek.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=BAMseek 2011July24
+        Icon=/usr/share/icons/humanity/apps/48/application-default-icon.svg
+        Exec=/usr/local/bamseek/bamseek
+#
+# Docker ################################################
+  - name: Install aptitude using apt
+    apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+  - name: Install required system packages
+    apt: name={{ item }} state=latest update_cache=yes
+    loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+  - name: Add Docker GPG apt Key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+
+  - name: Add Docker Repository
+    apt_repository:
+      repo: deb https://download.docker.com/linux/ubuntu bionic stable
+      state: present
+
+  - name: Update apt and install docker-ce
+    apt: update_cache=yes name=docker-ce state=latest
+
+  - name: Install Docker Module for Python
+    pip:
+      name: docker
+
+  - name: Add the user 'training' to docker group
+    user:
+      name: training
+      group: docker
+    ignore_errors: yes
+
+  - name: Add the user 'setup' to docker group
+    user:
+      name: setup
+      group: docker
+    ignore_errors: yes
+#
+# Get Course data ################################################
+#  - name: Download Course datasets in home folder
+#    get_url:
+#      url: "https://data.broadinstitute.org/Trinity/CTAT_RESOURCE_LIB/GRCh38_gencode_v33_CTAT_lib_Apr062020.plug-n-play.tar.gz"
+#      dest: /home/training/GRCh38_gencode_v33_CTAT_lib_Apr062020.plug-n-play.tar.gz
+#      mode: '0777'
+
+
+
+
+
+
+
+
+
+
+###
+####

@@ -1,0 +1,146 @@
+---
+- name: EIPP Predocs build playbook on 14-10-2019
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name:
+        - apt-transport-https
+        - openjdk-8-jre
+        - openjdk-8-jre-headless
+        - libcanberra-gtk3-module
+        - libcanberra-gtk-module
+        - python3
+        - python3-pip
+        - debootstrap
+        - git
+        - cpanminus
+      update_cache: yes
+
+# Cytoscape ################################################
+
+#  - name: Download Cytoscape
+#    get_url:
+#      url: "https://github.com/cytoscape/cytoscape/releases/download/3.7.2/Cytoscape_3_7_2_unix.sh"
+#      dest: /usr/local/Cytoscape_3_7_2_unix.sh
+#      mode: '0777'
+
+#  - name: Configure Java8 for Cytoscape
+#    shell: update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+
+#  - name: Install Cytoscape
+#    shell: ./Cytoscape_3_7_2_unix.sh -q
+#    args:
+#      chdir: /usr/local/
+
+#  - name: Create Cytoscape Symlink
+#    file:
+#      src: /opt/Cytoscape_v3.7.2/cytoscape.sh
+#      dest: /usr/local/bin/cytoscape
+#      state: link
+#    ignore_errors: yes
+
+#  - name: Delete Cytoscape installer
+#    file:
+#      path: /usr/local/Cytoscape_3_7_2_unix.sh
+#      state: absent
+#    ignore_errors: yes
+
+#  - name: Copy Cytoscape Desktop file
+#    copy:
+#      src: /usr/share/applications/Cytoscape-0.desktop
+#      dest: /home/training/Desktop/Cytoscape.desktop
+#      remote_src: yes
+#      owner: training
+#      group: training
+#      mode: '0777'
+
+# perl and modules ################################################
+
+  - name: Install Perl libraries
+    apt:
+      name:
+        - libreadonly-perl
+        - libreadonly-xs-perl
+        - liblist-moreutils-perl
+        - libpath-tiny-perl
+        - libset-intervaltree-perl
+        - libsort-naturally-perl
+        - libjson-perl
+        - libyaml-tiny-perl
+        - libyaml-perl
+
+# R and Rstudio ################################################
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install rstudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.5001-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("rafalib", "gplot", "reshape2", "DESeq2", "genefilter", "tidyverse", "pheatmap", "ggrepel", "plyr", "scales", "viridis", "ggdendro", "svglite", "optparse", "devtools"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/

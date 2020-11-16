@@ -1,0 +1,16 @@
+---
+[localmachine:vars]
+ansible_ssh_user=setup
+ansible_connection=ssh
+ansible_become-method=sudo
+
+[localmachine]
+
+coursevm      ansible_host=10.33.32.53
+
+
+
+
+
+
+---

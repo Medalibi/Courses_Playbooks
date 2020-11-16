@@ -1,0 +1,633 @@
+---
+- name: Mst Module 5 build playbook on 20-11-2019
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - default-jre
+      - gdebi
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+
+# Samtools ################################################
+
+  - name: Download and extract Samtools archives
+    unarchive:
+      src:  '{{ item }}'
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+    with_items:
+      - "https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2"
+      - "https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2"
+      - "https://github.com/samtools/bcftools/releases/download/1.9/bcftools-1.9.tar.bz2"
+
+  - name: Install Samtools dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+
+  - name: Compile Samtools
+    shell: |
+      ./configure
+      make
+      make install
+    args:
+      chdir: "{{ item }}"
+    with_items:
+      - "/usr/local/htslib-1.9"
+      - "/usr/local/samtools-1.9"
+      - "/usr/local/bcftools-1.9"
+
+# FastQC ################################################
+
+  - name: Download and extract FastQC archive
+    unarchive:
+      src: "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.8.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat FastQC Symlink
+    file:
+      src: /usr/local/FastQC/fastqc
+      dest: /usr/local/bin/fastqc
+      state: link
+    ignore_errors: yes
+
+  - name: Create FastQC Desktop file
+    file:
+      path: /home/training/Desktop/fastqc.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in FastQC Desktop file
+    blockinfile:
+      path: /home/training/Desktop/fastqc.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=FastQC 0.11.8
+        Icon=/usr/local/FastQC/fastqc_icon.ico
+        Exec=/usr/local/FastQC/fastqc
+
+# Hmmer ################################################
+
+  - name: Download and extract Hmmer archive
+    unarchive:
+      src: "http://eddylab.org/software/hmmer/hmmer.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Hmmer
+    shell: |
+      ./configure
+      make
+      make check
+      make install
+      cd easel; make install
+    args:
+      chdir: /usr/local/hmmer-3.3
+
+# Blast ################################################
+
+  - name: Download and extract Blast archive
+    unarchive:
+      src: "ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.9.0+-x64-linux.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create symlink for all the tools within Blast
+    shell: ln -sf /usr/local/ncbi-blast-2.9.0+/bin/* /usr/local/bin/
+    ignore_errors: yes
+
+# Artemis ################################################
+
+  - name: Download and extract Artrmis archive
+    unarchive:
+      src: "https://github.com/sanger-pathogens/Artemis/releases/download/v18.0.3/artemis-unix-release-18.0.3.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Blast DBs folder
+    file:
+      path: /home/training/blast-data
+      state: directory
+      owner: training
+      group: training
+      mode: '0777'
+
+#  - name: Setup the Blast DBs
+#    shell: /usr/local/artemis/etc/setup_blast_dbs.sh
+#    args:
+#      chdir: /home/training/blast-data
+#    ignore_errors: yes
+
+  - name: Set permission on the Blast DBs
+    shell: chmod -R 777 /home/training/blast-data && chown training -R /home/training/blast-data
+
+  - name: Create symlinks for artemis
+    shell: ln -sf /usr/local/artemis/'{{ item }}' /usr/local/bin/
+    with_items:
+      - act
+      - art
+      - bamview
+      - dnaplotter
+      - setenv
+    ignore_errors: yes
+
+# Abacas ################################################
+
+  - name: Download Abacas file
+    get_url:
+      url: "https://downloads.sourceforge.net/project/abacas/abacas.1.3.1.pl"
+      dest: /usr/local/bin/abacas.pl
+      mode: '0777'
+
+  - name: Create Abacas bin
+    file:
+      path: /usr/local/bin/abacas
+      state: touch
+      mode: '0777'
+
+  - name: Fill in the Abacas bin
+    blockinfile:
+      path: /usr/local/bin/abacas
+      block: |
+        #!/bin/bash
+        perl /usr/local/bin/abacas.pl "$@"
+
+# SPAdes ################################################
+
+  - name: Download and extract SPAdes archive
+    unarchive:
+      src: "http://cab.spbu.ru/files/release3.13.0/SPAdes-3.13.0-Linux.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create symlink for all the tools within SPAdes
+    shell: ln -sf /usr/local/SPAdes-3.13.0-Linux/bin/* /usr/local/bin/
+    ignore_errors: yes
+
+# Prokka ################################################
+
+  - name: Install Prokka dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - libdatetime-perl
+      - libxml-simple-perl
+      - libdigest-md5-perl
+      - git
+      - bioperl
+      - cpanminus
+
+  - name: Install Prokka Perl dependencies
+    cpanm:
+      name: Bio::Perl
+
+  - name: Download and extract Prokka archive
+    unarchive:
+      src: "https://github.com/tseemann/prokka/archive/v1.14.5.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create symlink for all the tools within Prokka
+    shell: ln -sf /usr/local/prokka-1.14.5/bin/* /usr/local/bin/
+    ignore_errors: yes
+
+# Seqtk ################################################
+
+  - name: Download and extract Seqtk archive
+    unarchive:
+      src: "https://github.com/lh3/seqtk/archive/v1.3.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile seqtk
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/seqtk-1.3
+    ignore_errors: yes
+
+
+# Roary ################################################
+
+  - name: Download and extract Roary archive
+    unarchive:
+      src: "https://github.com/sanger-pathogens/Roary/archive/v3.13.0.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install Roary dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - cd-hit
+      - cpanminus
+      - mcl
+      - parallel
+      - prank
+      - fasttree
+
+  - name: Install mafft Deb package
+    apt:
+      deb: https://mafft.cbrc.jp/alignment/software/mafft_7.450-1_amd64.deb
+
+  - name: Download and extract Kraken archive
+    unarchive:
+      src: "https://github.com/DerrickWood/kraken/archive/v1.1.1.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Kraken
+    shell: ./install_kraken.sh /usr/local/bin/
+    args:
+      chdir: /usr/local/kraken-1.1.1
+    ignore_errors: yes
+
+  - name: Download and extract Bedtools2 archive
+    unarchive:
+      src: "https://github.com/arq5x/bedtools2/releases/download/v2.29.0/bedtools-2.29.0.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Bedtools2
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/bedtools2
+    ignore_errors: yes
+
+  - name: Install Bio Roary Perl pkg
+    cpanm:
+      name: Bio::Roary
+      installdeps: yes
+
+# snp-sites  ################################################
+
+  - name: Download and extract snp-sites archive
+    unarchive:
+      src: "https://github.com/sanger-pathogens/snp-sites/archive/v2.5.1.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Snp-sites
+    shell: |
+      autoreconf -i -f
+      ./configure
+      make
+      make install
+    args:
+      chdir: /usr/local/snp-sites-2.5.1
+    ignore_errors: yes
+
+# IQ-Tree ################################################
+
+  - name: Download and extract IQ-Tree archive
+    unarchive:
+      src: "https://github.com/Cibiv/IQ-TREE/releases/download/v1.6.12/iqtree-1.6.12-Linux.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create symlink for IQ-Tree
+    shell: ln -s /usr/local/iqtree-1.6.12-Linux/bin/* /usr/local/bin/
+    ignore_errors: yes
+
+# weeSAM ################################################
+
+  - name: Download the githubrepo for weeSAM
+    git:
+      repo: https://github.com/centre-for-virus-research/weeSAM.git
+      dest: /usr/local/weeSAM
+
+  - name: Create weeSAM Symlink
+    file:
+      src: /usr/local/weeSAM/weeSAM
+      dest: /usr/local/bin/weeSAM
+      state: link
+    ignore_errors: yes
+
+# Bioperl ################################################
+
+  - name: Install Bio Perl pkg
+    cpanm:
+      name: BioPerl
+      installdeps: yes
+
+# Prodigal ################################################
+
+  - name: Download Prodigal
+    get_url:
+      url: "https://github.com/hyattpd/Prodigal/releases/download/v2.6.3/prodigal.linux"
+      dest: /usr/local/bin/prodigal
+      mode: '0777'
+
+# tbl2asn ################################################
+
+  - name: Download tbl2asn archive
+    get_url:
+      url: "ftp://ftp.ncbi.nih.gov/toolbox/ncbi_tools/converters/by_program/tbl2asn/linux64.tbl2asn.gz"
+      dest: /usr/local/bin
+      mode: '0777'
+
+  - name: Extract tbl2asn
+    shell: gunzip ./linux64.tbl2asn.gz
+    args:
+      chdir: /usr/local/bin
+    ignore_errors: yes
+
+  - name: Rename tbl2asn in bin
+    shell: mv /usr/local/bin/linux64.tbl2asn /usr/local/bin/tbl2asn
+
+# Aragorn ################################################
+
+  - name: Download and extract Aragorn archive
+    unarchive:
+      src: "http://130.235.244.92/ARAGORN/Downloads/aragorn1.2.38.tgz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Aragorn
+    shell: gcc -O3 -ffast-math -finline-functions -o aragorn aragorn1.2.38.c
+    args:
+      chdir: /usr/local/aragorn1.2.38
+    ignore_errors: yes
+
+  - name: Create Aragorn Symlink
+    file:
+      src: /usr/local/aragorn1.2.38/aragorn
+      dest: /usr/local/bin/aragorn
+      state: link
+    ignore_errors: yes
+
+# barrnap ################################################
+
+  - name: Download and extract barrnap archive
+    unarchive:
+      src: "https://github.com/tseemann/barrnap/archive/0.9.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create barrnap Symlink
+    file:
+      src: /usr/local/barrnap-0.9/bin/barrnap
+      dest: /usr/local/bin/barrnap
+      state: link
+    ignore_errors: yes
+
+# Sickle ################################################
+
+  - name: Download and extract Sickle archive
+    unarchive:
+      src: "https://github.com/najoshi/sickle/archive/v1.33.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Sickle
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/sickle-1.33
+    ignore_errors: yes
+
+  - name: Create sickle Symlink
+    file:
+      src: /usr/local/sickle-1.33/sickle
+      dest: /usr/local/bin/sickle
+      state: link
+    ignore_errors: yes
+
+# Bwa ################################################
+
+  - name: Download and extract Bwa archive
+    unarchive:
+      src: "https://github.com/lh3/bwa/releases/download/v0.7.17/bwa-0.7.17.tar.bz2"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Bwa
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/bwa-0.7.17
+    ignore_errors: yes
+
+  - name: Create Bwa Symlink
+    file:
+      src: /usr/local/bwa-0.7.17/bwa
+      dest: /usr/local/bin/bwa
+      state: link
+    ignore_errors: yes
+
+# MultiQC ################################################
+
+  - name: Install MultiQC dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+        - python-pip
+        - python3-pip
+
+  - name: Install MultiQC
+    shell: pip3 install -U multiqc
+
+# Seaview  ################################################
+
+  - name: Download and extract seaview archive
+    unarchive:
+      src: "http://doua.prabi.fr/software/seaview_data/seaview4-64.tgz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create symlink for all the tools within seaview
+    shell: ln -s /usr/local/seaview/* /usr/local/bin/
+    ignore_errors: yes
+
+  - name: Create Seaview Desktop file
+    file:
+      path: /home/training/Desktop/seaview.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Seaview Desktop file
+    blockinfile:
+      path: /home/training/Desktop/seaview.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Seaview 4.7
+        Icon=/usr/share/icons/humanity/apps/48/application-default-icon.svg
+        Exec=/usr/local/seaview/seaview
+
+# Tabix ################################################
+
+  - name: Download the github repo for tabix
+    git:
+      repo: https://github.com/samtools/tabix.git
+      dest: /usr/local/tabix
+
+  - name: Compile tabix
+    shell: |
+      make
+    args:
+      chdir: /usr/local/tabix
+    ignore_errors: yes
+
+  - name: Create tabix Symlink
+    file:
+      src: /usr/local/tabix/tabix
+      dest: /usr/local/bin/tabix
+      state: link
+    ignore_errors: yes
+
+# Phyml ################################################
+
+  - name: Download and extract phyml archive
+    unarchive:
+      src: "https://github.com/stephaneguindon/phyml/archive/v3.3.20190909.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile phml
+    shell: |
+      autoreconf -i;
+      ./configure --enable-phyml;
+      make
+    args:
+      chdir: /usr/local/phyml-3.3.20190909
+    ignore_errors: yes
+
+# Clustalw ################################################
+
+  - name: Download and extract clustalw archive
+    unarchive:
+      src: "http://www.clustal.org/download/current/clustalw-2.1-linux-x86_64-libcppstatic.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create symlink for all the tools within clustalw
+    shell: ln -s /usr/local/clustalw-2.1-linux-x86_64-libcppstatic/* /usr/local/bin/
+    ignore_errors: yes
+
+# Figtree ################################################
+
+  - name: Download and extract Figtree archive
+    unarchive:
+      src: "https://github.com/rambaut/figtree/releases/download/v1.4.4/FigTree_v1.4.4.tgz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Configure Figtree bash file
+    lineinfile:
+      path: /usr/local/FigTree_v1.4.4/bin/figtree
+      regexp: '-jar lib'
+      line: 'java -Xms64m -Xmx512m -jar /usr/local/FigTree_v1.4.4/lib/figtree.jar "$@"'
+
+  - name: Create Figtree Symlink
+    file:
+      src: /usr/local/FigTree_v1.4.4/bin/figtree
+      dest: /usr/local/bin/figtree
+      state: link
+    ignore_errors: yes
+
+  - name: Create Figtree Desktop file
+    file:
+      path: /home/training/Desktop/figtree.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Figtree Desktop file
+    blockinfile:
+      path: /home/training/Desktop/figtree.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Figtree 1.4.4
+        Icon=/usr/local/FigTree_v1.4.4/images/figtree.png
+        Exec=/usr/local/FigTree_v1.4.4/bin/figtree
+
+# Muscle ################################################
+
+  - name: Download and extract Muscle archive
+    unarchive:
+      src: "http://www.drive5.com/muscle/downloads3.8.31/muscle3.8.31_i86linux64.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Muscle Symlink
+    file:
+      src: /usr/local/muscle3.8.31_i86linux64/muscle3.8.31_i86linux64
+      dest: /usr/local/bin/muscle
+      state: link
+    ignore_errors: yes
+
+#################################################

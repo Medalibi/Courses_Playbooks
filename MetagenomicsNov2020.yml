@@ -1,0 +1,296 @@
+---
+- name: Metagenomics Bioinformatics November 2020 (Virtual) build playbook on 07-10-2020
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python3-dev
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - expect
+      - curl
+      - vim
+      - zlib1g-dev
+      - zlib1g
+      - g++
+      - cmake
+      - libreadline-dev
+      - libbz2-dev
+
+  - name: Install pypi tools
+    shell: pip3 install -U gtdbtk
+
+# Course datasets ################################################
+  - name: Download and extract course datasets
+    unarchive:
+      src: "https://ebitutorial.s3.climb.ac.uk/Data.tar.gz"
+      dest: /home/training/
+      remote_src: yes
+      mode: '0777'
+
+# R and Rstudio ################################################
+
+  - name: Add R CRAN apt key
+    apt_key:
+      keyserver: keyserver.ubuntu.com
+      id: E298A3A825C0D65DFD57CBB651716619E084DAB9
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran40/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install RStudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.3.1093-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("SIAMCAT", "tidyverse", "vegan", "labdsv"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Docker ################################################
+  - name: Install aptitude using apt
+    apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+  - name: Install required system packages
+    apt: name={{ item }} state=latest update_cache=yes
+    loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+  - name: Add Docker GPG apt Key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+
+  - name: Add Docker Repository
+    apt_repository:
+      repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+      state: present
+
+  - name: Update apt and install docker-ce
+    apt: update_cache=yes name=docker-ce state=latest
+
+  - name: Install Docker Module for Python
+    pip:
+      name: docker
+
+  - name: Add the user 'training' to docker group
+    user:
+      name: training
+      group: docker
+    ignore_errors: yes
+
+  - name: Add the user 'setup' to docker group
+    user:
+      name: setup
+      group: docker
+    ignore_errors: yes
+
+# MiniConda ################################################
+  - name: Download Miniconda3
+    get_url:
+      url: "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+      dest: /usr/local/Miniconda3.sh
+      mode: '0777'
+
+  - name: Install Apt requirements
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+        - python-dev
+        - python-pip
+      update_cache: yes
+
+  - name: Install Pip requirements
+    shell: pip3 install -U Requests pycosat PyYaml Snakemake
+
+  - name: Install Miniconda3
+    shell: /usr/local/Miniconda3.sh -b
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Create Conda Symlink
+    file:
+      src: /home/training/miniconda3/bin/conda
+      dest: /usr/local/bin/conda
+      state: link
+    ignore_errors: yes
+
+  - name: Update Miniconda3
+    shell: conda update conda
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Delete Conda installer
+    file:
+      path: /usr/local/Miniconda3.sh
+      state: absent
+    ignore_errors: yes
+
+# Strong ################################################
+  - name: Download STRONG
+    git:
+      repo: 'https://github.com/chrisquince/STRONG.git'
+      dest: /usr/local/STRONG
+      recursive: yes
+
+  - name: Compile Spades and CoG
+    shell: |
+      ./build_cog_tools.sh
+      conda install -c conda-forge mamba -y
+    args:
+      chdir: /usr/local/STRONG/SPAdes/assembler/
+    ignore_errors: yes
+
+  - name: Resolve Strong envirenment
+    shell: |
+      mamba env create -f conda_env.yaml
+      ln -s /home/training/miniconda3/envs/STRONG/lib/R/modules/lapack.so /home/training/miniconda3/envs/STRONG/lib/R/modules/libRlapack.so
+      conda activate STRONG
+    args:
+      chdir: /usr/local/STRONG
+    ignore_errors: yes
+
+  - name: Install BayesPaths
+    shell: python3 ./setup.py install
+    args:
+      chdir: /usr/local/STRONG/BayesPaths
+    ignore_errors: yes
+
+  - name: Install DESMAN
+    shell: python3 ./setup.py install
+    args:
+      chdir: /usr/local/STRONG/DESMAN
+    ignore_errors: yes
+
+# Docker Container pull ################################################
+  - name: Pull Docker image mgnify-ebi-2020-binning
+    docker_image:
+      name: microbiomeinformatics/mgnify-ebi-2020-binning
+      source: pull
+    ignore_errors: yes
+
+  - name: Pull Docker image mgnify-ebi-2020-qc-asssembly
+    docker_image:
+      name: microbiomeinformatics/mgnify-ebi-2020-qc-asssembly
+      source: pull
+    ignore_errors: yes

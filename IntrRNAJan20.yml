@@ -1,0 +1,348 @@
+---
+- name: Intro RNA jan 20 build playbook on 29-11-2019
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - default-jre
+      - gdebi
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+
+# Samtools ################################################
+
+  - name: Download and extract Samtools archives
+    unarchive:
+      src:  '{{ item }}'
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+    with_items:
+      - "https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2"
+      - "https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2"
+      - "https://github.com/samtools/bcftools/releases/download/1.9/bcftools-1.9.tar.bz2"
+
+  - name: Install Samtools dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+
+  - name: Compile Samtools
+    shell: |
+      ./configure
+      make
+      make install
+    args:
+      chdir: "{{ item }}"
+    with_items:
+      - "/usr/local/htslib-1.9"
+      - "/usr/local/samtools-1.9"
+      - "/usr/local/bcftools-1.9"
+
+# FastQC ################################################
+
+  - name: Download and extract FastQC archive
+    unarchive:
+      src: "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.8.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat FastQC Symlink
+    file:
+      src: /usr/local/FastQC/fastqc
+      dest: /usr/local/bin/fastqc
+      state: link
+    ignore_errors: yes
+
+  - name: Create FastQC Desktop file
+    file:
+      path: /home/training/Desktop/fastqc.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in FastQC Desktop file
+    blockinfile:
+      path: /home/training/Desktop/fastqc.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=FastQC 0.11.8
+        Icon=/usr/local/FastQC/fastqc_icon.ico
+        Exec=/usr/local/FastQC/fastqc
+
+# R and Rstudio ################################################
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install rstudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.5019-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("DESeq2"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Hisat2 ################################################
+
+  - name: Download and extract Hisat2 archive
+    unarchive:
+      src: "ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/downloads/hisat2-2.1.0-Linux_x86_64.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create symlink for all the tools within Hisat
+    shell: ln -s /usr/local/hisat2-2.1.0/hisat* /usr/local/bin/
+    ignore_errors: yes
+
+# cutadapt ################################################
+
+  - name: Install cutadapt dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+        - python-pip
+        - python3-dev
+        - python3-pip
+
+  - name: Install cutadapt
+    shell: pip3 install -U cutadapt
+
+# TrimGalore ################################################
+
+  - name: Download and extract TrimGalore archive
+    unarchive:
+      src: "https://github.com/FelixKrueger/TrimGalore/archive/0.6.5.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create TrimGalore Symlink
+    file:
+      src: /usr/local/TrimGalore-0.6.5/trim_galore
+      dest: /usr/local/bin/trim_galore
+      state: link
+    ignore_errors: yes
+
+# Seqmonk ################################################
+
+  - name: Download and extract SeqMonk archive
+    unarchive:
+      src: "http://www.bioinformatics.babraham.ac.uk/projects/seqmonk/seqmonk_v1.45.4_linux64.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create SeqMonk Symlink
+    file:
+      src: /usr/local/SeqMonk/seqmonk
+      dest: /usr/local/bin/seqmonk
+      state: link
+    ignore_errors: yes
+
+  - name: Copy Seqmonk Desktop file
+    copy:
+      src: /usr/local/SeqMonk/seqmonk.desktop
+      dest: /home/training/Desktop/seqmonk.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Set the icon path for Seqmonk Desktop file
+    shell: sed -i 's+/usr/local/SeqMonk/uk/ac/bbsrc/babraham/SeqMonk/Resources/monk.svg+/usr/local/SeqMonk/uk/ac/babraham/SeqMonk/Resources/monk.svg+g' /home/training/Desktop/seqmonk.desktop
+
+  - name: Create SeqMonk R pkg installer file
+    file:
+      path: /usr/local/SeqMonk/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in SeqMonkR pkg installer file
+    blockinfile:
+      path: /usr/local/SeqMonk/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("DESeq2", "edgeR", "Rtsne", "limma", "statmod", "fastseg"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/SeqMonk/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Minimap2 ################################################
+
+  - name: Download and extract Minimap2 archive
+    unarchive:
+      src: "https://github.com/lh3/minimap2/releases/download/v2.17/minimap2-2.17_x64-linux.tar.bz2"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Minimap2 Symlink
+    file:
+      src: /usr/local/minimap2-2.17_x64-linux/minimap2
+      dest: /usr/local/bin/minimap2
+      state: link
+    ignore_errors: yes
+
+# Bedtools2 ################################################
+
+  - name: Download and extract Bedtools2 archive
+    unarchive:
+      src: "https://github.com/arq5x/bedtools2/releases/download/v2.29.0/bedtools-2.29.0.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Bedtools2
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/bedtools2
+    ignore_errors: yes
+
+# STAR ################################################
+
+  - name: Download and extract STAR archive
+    unarchive:
+      src: "https://github.com/alexdobin/STAR/archive/2.7.3a.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile STAR
+    shell: |
+      make STAR
+      make install
+    args:
+      chdir: /usr/local/STAR-2.7.3a/source
+    ignore_errors: yes
+
+  - name: Create Symlink for all the tools within STAR
+    shell: ln -s /usr/local/STAR-2.7.3a/bin/Linux_x86_64/STAR* /usr/local/bin/
+    ignore_errors: yes
+
+# stringtie2 ################################################
+
+  - name: Download and extract stringtie2 archive
+    unarchive:
+      src: "https://github.com/skovaka/stringtie2/archive/v1.3.6.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile stringtie2
+    shell: |
+      make release
+      make install
+    args:
+      chdir: /usr/local/stringtie2-1.3.6/
+    ignore_errors: yes
+
+  - name: Create stringtie2 Symlink
+    file:
+      src: /usr/local/stringtie2-1.3.6/stringtie
+      dest: /usr/local/bin/stringtie
+      state: link
+    ignore_errors: yes

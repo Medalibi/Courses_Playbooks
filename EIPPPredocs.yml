@@ -1,0 +1,581 @@
+---
+- name: EIPP Predocs build playbook on 14-10-2019
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name:
+        - apt-transport-https
+        - openjdk-8-jre
+        - openjdk-8-jre-headless
+        - libcanberra-gtk3-module
+        - libcanberra-gtk-module
+        - python3
+        - python3-pip
+        - debootstrap
+        - git
+      update_cache: yes
+
+# Jupyter Notebook and req. ################################################
+
+  - name: Install Apt requirements
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - libfreetype6-dev
+        - libfreetype6
+      update_cache: yes
+
+  - name: Install Jupyter notebook and requirements
+    shell: pip3 install -U jupyterlab requests pandas cufflinks matplotlib
+
+# Pymol ################################################
+
+  - name: Download pymol opensource
+    git:
+      repo: https://github.com/schrodinger/pymol-open-source.git
+      dest: /usr/local/pymol
+    ignore_errors: yes
+
+  - name: Change pymol folder permissions
+    file:
+      path: /usr/local/pymol
+      mode: '0777'
+      recurse: yes
+
+  - name: Install dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - apbs
+      - blt
+      - freeglut3
+      - libblas3
+      - libgfortran4
+      - libglew2.0
+      - liblapack3
+      - libmaloc1
+      - libtcl8.6
+      - libtk8.6
+      - python-numpy
+      - python-opengl
+      - python-pmw
+      - python-tk
+      - tk8.6-blt2.5
+      - pmw
+      - glew-utils
+      - libglew-dev
+      - libglew2.0
+      - libfreetype6-dev
+      - libfreetype6
+      - libglm-dev
+      - freeglut3
+      - freeglut3-dev
+      - python-pyqt5
+      - pyqt5-dev
+      - python-qtpy
+      - python-dev
+
+  - name: Compile Pymol
+    shell: python setup.py install --prefix=/usr/local/pymol
+    args:
+      chdir: /usr/local/pymol
+
+  - name: Creat Pymol Symlink
+    file:
+      src: /usr/local/pymol/bin/pymol
+      dest: /usr/local/bin/pymol
+      state: link
+    ignore_errors: yes
+
+  - name: Create Pymol Desktop file
+    file:
+      path: /home/training/Desktop/pymol.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Pymol Desktop file
+    blockinfile:
+      path: /home/training/Desktop/pymol.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Pymol 2
+        Icon=/usr/local/pymol/data/pymol/icons/icon2.svg
+        Exec=/usr/local/pymol/bin/pymol
+
+# MiniConda ################################################
+
+  - name: Download Miniconda3
+    get_url:
+      url: "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+      dest: /usr/local/Miniconda3.sh
+      mode: '0777'
+
+  - name: Install Apt requirements
+    apt:
+      name:
+        - python3-pip
+        - python-pip
+      update_cache: yes
+
+  - name: Install Pip requirements
+    shell: pip3 install -U Requests pycosat PyYaml
+
+  - name: Install Miniconda3
+    shell: /usr/local/Miniconda3.sh -b
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Create Conda Symlink
+    file:
+      src: /home/training/miniconda3/bin/conda
+      dest: /usr/local/bin/conda
+      state: link
+    ignore_errors: yes
+
+  - name: Delete Conda installer
+    file:
+      path: /usr/local/Miniconda3.sh
+      state: absent
+    ignore_errors: yes
+
+# Snakemake ################################################
+
+  - name: Install Snakemake via Conda
+    shell: conda install -c bioconda -c conda-forge snakemake -y
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+#  - name: Install Snakemake via Pip
+#    shell: pip3 install -U snakemake
+
+# Singularity 3.4.1 ################################################
+
+  - name: Install Apt requirements
+    apt:
+      name:
+        - build-essential
+        - libssl-dev
+        - uuid-dev
+        - libseccomp-dev
+        - pkg-config
+        - squashfs-tools
+        - cryptsetup
+        - curl
+      update_cache: yes
+
+  - name: Download Go
+    shell: |
+      export VERSION=1.13.1 OS=linux ARCH=amd64
+      wget -O /home/training/Downloads/go.tar.gz https://dl.google.com/go/go${VERSION}.${OS}-${ARCH}.tar.gz
+    become: yes
+    become_user: training
+
+  - name: Extract Go
+    shell: |
+      sudo tar -C /usr/local -xzf /home/training/Downloads/go.tar.gz
+      chmod 777 -R /usr/local/go
+
+#  - name: Setup and compile singularity
+#    shell: |
+#      echo 'export GOPATH=${HOME}/go' >> ~/.bashrc
+#      echo 'export PATH=/usr/local/go/bin:${PATH}:/home/training/go/bin' >> ~/.bashrc
+#      source ~/.bashrc
+#      curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b /home/training/go/bin v1.15.0
+#      mkdir -p /home/training/go/src/github.com/sylabs
+#      cd /home/training/go/src/github.com/sylabs
+#      git clone https://github.com/sylabs/singularity.git
+#      cd singularity
+#      git checkout v3.4.1
+#      cd /home/training/go/src/github.com/sylabs/singularity
+#      ./mconfig
+#      cd ./builddir
+#      make
+#    become: yes
+#    become_user: training
+
+#  - name: Install singularity
+#    shell: sudo make install
+
+# Singularity 2.6.1 ################################################
+
+  - name: Install Apt requirements
+    apt:
+      name:
+        - build-essential
+        - libssl-dev
+        - uuid-dev
+        - libseccomp-dev
+        - pkg-config
+        - squashfs-tools
+        - cryptsetup
+        - curl
+        - libarchive-dev
+        - libtool
+        - automake
+        - autoconf
+      update_cache: yes
+
+#  - name: Download Go
+#    shell: |
+#      export VERSION=1.13.1 OS=linux ARCH=amd64
+#      wget -O /home/training/Downloads/go.tar.gz https://dl.google.com/go/go${VERSION}.${OS}-${ARCH}.tar.gz
+#    become: yes
+#    become_user: training
+
+#  - name: Extract Go
+#    shell: |
+#      sudo tar -C /usr/local -xzf /home/training/Downloads/go.tar.gz
+#      chmod 777 -R /usr/local/go
+
+#  - name: Setup and compile Singularity
+#    shell: |
+#      echo 'export GOPATH=${HOME}/go' >> ~/.bashrc
+#      echo 'export PATH=/usr/local/go/bin:${PATH}:/home/training/go/bin' >> ~/.bashrc
+#      source ~/.bashrc
+#      curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b /home/training/go/bin v1.15.0
+#      mkdir -p /home/training/go/src/github.com/sylabs
+#      cd /home/training/go/src/github.com/sylabs
+#      git clone https://github.com/sylabs/singularity.git
+#      cd singularity
+#      ./autogen.sh
+#      ./configure --prefix=/usr/local
+#      make
+#    become: yes
+#    become_user: training
+
+#  - name: Install singularity
+#    shell: sudo make install
+
+# seqtools ################################################
+
+  - name: Install Apt requirements
+    apt:
+      name:
+        - libcurl4-gnutls-dev
+        - libgtk2.0-dev
+        - libglib2.0-dev
+        - libreadline6-dev
+        - libsqlite3-dev
+      update_cache: yes
+
+  - name: Download and extract Seqtools
+    unarchive:
+      src: "ftp://ftp.sanger.ac.uk/pub/resources/software/seqtools/PRODUCTION/seqtools-4.44.1.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Seqtools
+    shell: |
+      ./configure
+      make
+      make install
+    args:
+      chdir: /usr/local/seqtools-4.44.1
+
+# Hmmer ################################################
+
+  - name: Install hmmer using conda
+    shell: conda install -c bioconda hmmer -y
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Easel ################################################
+
+  - name: Download Easel
+    git:
+      repo: https://github.com/EddyRivasLab/easel
+      dest: /usr/local/easel
+    ignore_errors: yes
+
+  - name: Compile Easel
+    shell: |
+      autoconf
+      ./configure
+      make
+      make check
+      make install
+    args:
+      chdir: /usr/local/easel
+
+# Blast ################################################
+
+  - name: Install Blast using conda
+    shell: conda install -c bioconda blast -y
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Psicov ################################################
+
+  - name: Download Psicov
+    git:
+      repo: https://github.com/psipred/psicov
+      dest: /usr/local/psicov
+    ignore_errors: yes
+
+  - name: Compile Easel
+    shell: make
+    args:
+      chdir: /usr/local/psicov/src
+
+  - name: Create Psicov Symlink
+    file:
+      src: /usr/local/psicov/src/psicov
+      dest: /usr/local/bin/psicov
+      state: link
+    ignore_errors: yes
+
+# R and Rstudio ################################################
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install rstudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.5001-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("argparse", "ggplot2", "reshape2", "stringr", "seqinr", "bio3d", "igraph", "dplyr", "tidyr", "seurat", "tidyverse", "biomaRt", "RColorBrewer", "scales", "gridExtra", "dslabs", "Matrix", "cowplot", "monocle", "Biobase", "BisqueRNA", "clusterProfiler", "org.Hs.eg.db"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Sublime ################################################
+
+  - name: Add an apt key for Sublime
+    shell: wget -qO - https://download.sublimetext.com/sublimehq-pub.gpg | sudo apt-key add -
+
+  - name: Add Sublime apt repository
+    apt_repository:
+      repo: 'deb https://download.sublimetext.com/ apt/stable/'
+      state: present
+      filename: sublime-text
+      update_cache: yes
+
+  - name: Install Sublime
+    apt:
+      name: sublime-text
+      update_cache: yes
+
+  - name: Copy Sublime Desktop file
+    copy:
+      src: /usr/share/applications/sublime_text.desktop
+      dest: /home/training/Desktop/sublime_text.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+# Cytoscape ################################################
+
+  - name: Download Cytoscape
+    get_url:
+      url: "https://github.com/cytoscape/cytoscape/releases/download/3.7.2/Cytoscape_3_7_2_unix.sh"
+      dest: /usr/local/Cytoscape_3_7_2_unix.sh
+      mode: '0777'
+
+  - name: Configure Java8 for Cytoscape
+    shell: update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+
+  - name: Install Cytoscape
+    shell: ./Cytoscape_3_7_2_unix.sh -q
+    args:
+      chdir: /usr/local/
+
+  - name: Create Cytoscape Symlink
+    file:
+      src: /opt/Cytoscape_v3.7.2/cytoscape.sh
+      dest: /usr/local/bin/cytoscape
+      state: link
+    ignore_errors: yes
+
+  - name: Delete Cytoscape installer
+    file:
+      path: /usr/local/Cytoscape_3_7_2_unix.sh
+      state: absent
+    ignore_errors: yes
+
+  - name: Copy Cytoscape Desktop file
+    copy:
+      src: /usr/share/applications/Cytoscape-0.desktop
+      dest: /home/training/Desktop/Cytoscape.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+# Jalview ################################################
+
+  - name: Download Jalview
+    get_url:
+      url: "http://www.jalview.org/getdown/release/install4j/1.8/Jalview-OFFLINE_unix_installer_2_11_0-j8.sh"
+      dest: /usr/local/Jalview.sh
+      mode: '0777'
+
+  - name: Install Jalview
+    shell: ./Jalview.sh -q -dir /usr/local/Jalview
+    args:
+      chdir: /usr/local/
+
+  - name: Set Jalview folder permissions
+    file:
+      path: /usr/local/Jalview
+      mode: '0777'
+    ignore_errors: yes
+
+  - name: Delete Jalview installer
+    file:
+      path: /usr/local/Jalview.sh
+      state: absent
+    ignore_errors: yes
+
+  - name: Copy Jalview Desktop file
+    copy:
+      src: /usr/share/applications/Jalview-0.desktop
+      dest: /home/training/Desktop/Jalview.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+# Anaconda ################################################
+
+  - name: Download Anaconda3
+    get_url:
+      url: "https://repo.anaconda.com/archive/Anaconda3-2019.10-Linux-x86_64.sh"
+      dest: /usr/local/Anaconda3.sh
+      mode: '0777'
+
+  - name: Install Anaconda3
+    shell: /usr/local/Anaconda3.sh -b
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+  - name: Delete Anaconda installer
+    file:
+      path: /usr/local/Anaconda3.sh
+      state: absent
+    ignore_errors: yes
+
+# Pycharm ################################################
+
+  - name: Install PyCharm community
+    snap:
+      name: pycharm-community
+      classic: yes
+
+
+  - name: Copy PyCharm Desktop file
+    copy:
+      src: /var/lib/snapd/desktop/applications/pycharm-community_pycharm-community.desktop
+      dest: /home/training/Desktop/pycharm.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+
+# Python packages ################################################
+
+  - name: Install python packages
+    shell: pip3 install -U rise seaborn click virtualenv virtualenvwrapper plotly numpy
+
+# Cuda ################################################
+
+#wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+#sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+#sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+#sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
+#sudo apt-get update
+#sudo apt-get -y install cuda
+
+wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_6.5-14_amd64.deb
+
+gdebi cuda-repo-ubuntu1404_6.5-14_amd64.deb
+
+apt update
+apt install cuda-toolkit-6-5

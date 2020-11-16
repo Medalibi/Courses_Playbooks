@@ -1,0 +1,452 @@
+---
+- name: NGS build playbook on 13-09-2019
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools 
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - bwa
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - gdebi
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+
+# Samtools ################################################
+
+  - name: Download and extract Samtools archives
+    unarchive:
+      src:  '{{ item }}'
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+    with_items:
+      - "https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2"
+      - "https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2"
+      - "https://github.com/samtools/bcftools/releases/download/1.9/bcftools-1.9.tar.bz2"
+
+  - name: Install Samtools dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+
+  - name: Compile Samtools
+    shell: |
+      ./configure
+      make
+      make install
+    args:
+      chdir: "{{ item }}"
+    with_items:
+      - "/usr/local/htslib-1.9"
+      - "/usr/local/samtools-1.9"
+      - "/usr/local/bcftools-1.9"
+
+# Picard ################################################
+
+  - name: Download Picard 
+    get_url:
+      url: "https://github.com/broadinstitute/picard/releases/download/2.20.7/picard.jar"
+      dest: /usr/local/bin
+      mode: '0777'
+
+  - name: Create Picard bash executable
+    file:
+      path: /usr/local/bin/picard
+      state: touch
+      mode: '0777'
+
+  - name: Fill in Picard bash executable
+    blockinfile:
+      path: /usr/local/bin/picard
+      block: |
+        #!/bin/bash
+        java -jar /usr/local/bin/picard.jar $@
+
+# Tablet ################################################
+
+  - name: Download Tablet
+    get_url:
+      url: "https://ics.hutton.ac.uk/resources/tablet/installers/tablet_linux_x64_1_19_09_03.sh"
+      dest: /usr/local/tablet.sh
+      mode: '0777'
+
+  - name: Install Tablet with Expect
+    shell: | 
+      spawn /usr/local/tablet.sh -c
+
+      expect -re \"OK \[o, Enter\], Cancel \[c\]\"
+      send \"o\r\r\"
+
+      expect -re \"\[Enter\]\"
+      send \"\r\"
+ 
+      expect -re \"Yes \[1\], No \[2\]\"
+      send \"1\r\"
+     
+      sleep 2
+
+      expect -re \"\[\/opt\/Tablet\]\"
+      send \"\/usr\/local\/Tablet\/\r\"
+
+      expect -re \"Yes \[y, Enter\], No \[n\]\"
+      send \"y\r\"
+
+      expect -re \"\[\/usr\/local\/bin\]\"
+      send \"\r\"
+
+      expect -re \"Yes \[y, Enter\], No \[n\]\"
+      send \"n\r\"
+
+      interact
+    args:
+      executable: /usr/bin/expect
+
+  - name: Remove Tablet Installer 
+    file:
+      path: /usr/local/tablet.sh
+      state: absent
+
+  - name: Copy Tablet Desktop icon
+    copy:
+      src: /usr/local/Tablet/Tablet.desktop
+      dest: /home/training/Desktop/Tablet.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+# IGV ################################################
+
+  - name: Download and extract IGV archive
+    unarchive:
+      src: "https://data.broadinstitute.org/igv/projects/downloads/2.7/IGV_Linux_2.7.2.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install  with Expect
+    shell: |
+      sed -i 's/\"$prefix\"/\/usr\/local\/IGV_Linux_2.7.2/g' /usr/local/IGV_Linux_2.7.2/igv.sh
+      ln -sf /usr/local/IGV_Linux_2.7.2/igv.sh /usr/local/bin/igv
+    ignore_errors: yes
+
+  - name: Create IGV Desktop file
+    file:
+      path: /home/training/Desktop/igv.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in IGV Desktop file
+    blockinfile:
+      path: /home/training/Desktop/igv.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=IGV 2.6.3
+        Icon=/usr/local/IGV_Linux_2.7.2/IGV_64.png
+        Exec=/usr/local/IGV_Linux_2.7.2/igv.sh
+
+# FastQC ################################################
+
+  - name: Download and extract FastQC archive
+    unarchive:
+      src: "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.8.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat FastQC Symlink
+    file:
+      src: /usr/local/FastQC/fastqc
+      dest: /usr/local/bin/fastqc
+      state: link
+    ignore_errors: yes
+
+  - name: Create FastQC Desktop file
+    file:
+      path: /home/training/Desktop/fastqc.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in FastQC Desktop file
+    blockinfile:
+      path: /home/training/Desktop/fastqc.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=FastQC 0.11.8
+        Icon=/usr/local/FastQC/fastqc_icon.ico
+        Exec=/usr/local/FastQC/fastqc
+
+# Trimmomatic ################################################
+
+  - name: Download and extract Trimmomatic archive
+    unarchive:
+      src: "http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.39.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Trimmomatic bash file
+    file:
+      path: /usr/local/Trimmomatic-0.39/trimmomatic
+      state: touch
+      mode: '0777'
+
+  - name: Fill in Trimmomatic bash file
+    blockinfile:
+      path: /usr/local/Trimmomatic-0.39/trimmomatic
+      block: |
+        #!/bin/bash
+        java -jar /usr/local/Trimmomatic-0.39/trimmomatic-0.39.jar $@
+
+  - name: Creat Trimmomatic Symlink
+    file:
+      src: '{{ item.src }}'
+      dest: '{{ item.dest }}'
+      state: link
+    with_items:
+      - { src: "/usr/local/Trimmomatic-0.39/trimmomatic-0.39.jar", dest: "/usr/local/bin/trimmomatic-0.39.jar" }
+      - { src: "/usr/local/Trimmomatic-0.39/trimmomatic", dest: "/usr/local/bin/trimmomatic" }
+    ignore_errors: yes
+
+# GATK ################################################
+
+  - name: Download and extract GATK archive
+    unarchive:
+      src: "https://github.com/broadinstitute/gatk/releases/download/4.1.3.0/gatk-4.1.3.0.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat GATK Symlink
+    file:
+      src: /usr/local/gatk-4.1.3.0/gatk
+      dest: /usr/local/bin/gatk
+      state: link
+    ignore_errors: yes
+
+# vcftools ################################################
+
+  - name: Download and extract vcftools archive
+    unarchive:
+      src: "https://github.com/vcftools/vcftools/releases/download/v0.1.16/vcftools-0.1.16.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile vcftools
+    shell: |
+      ./configure
+      make
+      make install
+    args:
+      chdir: "/usr/local/vcftools-0.1.16"
+
+# Freebayes ################################################
+
+  - name: Download Freebayes into the bin
+    get_url:
+      url: "https://github.com/ekg/freebayes/releases/download/v1.3.1/freebayes-v1.3.1"
+      dest: /usr/local/bin/freebayes
+      mode: '0777'
+
+# R CRAN & Rstudio ################################################
+
+  - name: add R cran apt repository
+    apt_repository: 
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/' 
+      state: present 
+      filename: rcran 
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - r-base
+      - r-base-core
+      - r-recommended
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install rstudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.1335-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+# Qualimap ################################################
+
+  - name: Download and extract qualimap archive
+    unarchive:
+      src: "https://bitbucket.org/kokonech/qualimap/downloads/qualimap_v2.2.1.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat qualimap Symlink
+    file:
+      src: /usr/local/qualimap_v2.2.1/qualimap
+      dest: /usr/local/bin/qualimap
+      state: link
+    ignore_errors: yes
+
+  - name: Create qualimap Desktop file
+    file:
+      path: /home/training/Desktop/qualimap.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in qualimap Desktop file
+    blockinfile:
+      path: /home/training/Desktop/qualimap.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Qualimap 2.2.1
+        Icon=/usr/share/icons/Humanity/apps/64/application-default-icon.svg
+        Exec=/usr/local/qualimap_v2.2.1/qualimap
+
+  - name: Install R cran and dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl 
+      - libcurl4-openssl-dev
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("optparse", "NOISeq", "XML", "Rsamtools", "Repitools", "rtracklayer"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+
+# BBMap ################################################
+
+  - name: Download and extract BBMap archive
+    unarchive:
+      src: "https://netix.dl.sourceforge.net/project/bbmap/BBMap_38.67.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Symlink for all the tools within bbmap
+    shell: ln -s /usr/local/bbmap/* /usr/local/bin/
+    ignore_errors: yes
+
+# Java JRE 8 ################################################
+
+  - name: Download and extract Oracle JRE archive
+    unarchive:
+      src: "https://download.oracle.com/otn/java/jdk/8u202-b08/1961070e4c9b4e26a04e7f5a083f551e/jre-8u202-linux-x64.tar.gz?AuthParam=1568196567_cec77c2f085e77f0f93079a471f75b8e"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0755'
+
+  - name: Create Symlink for the JRE bins
+    shell: ln -s /usr/local/jre1.8.0_202/bin/* /usr/local/bin/
+    ignore_errors: yes
+
+# VCF assembly & validator ################################################
+
+  - name: Download vcf validator into the bin
+    get_url:
+      url: "https://github.com/EBIvariation/vcf-validator/releases/download/v0.9.2/vcf_validator_linux"
+      dest: /usr/local/bin/vcf_validator
+      mode: '0777'
+
+  - name: Download vcf assembly checker into the bin
+    get_url:
+      url: "https://github.com/EBIvariation/vcf-validator/releases/download/v0.9.2/vcf_assembly_checker_linux"
+      dest: /usr/local/bin/vcf_assembly_checker         
+      mode: '0777'
+
+# SOAPec ################################################
+
+  - name: Download and extract SOAPec archive
+    unarchive:
+      src: "https://iweb.dl.sourceforge.net/project/soapdenovo2/ErrorCorrection/SOAPec_v2.01.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0755'
+
+  - name: Create Symlink for all the tools within SOAPec
+    shell: ln -s /usr/local/SOAPec_v2.01/bin/* /usr/local/bin/
+    ignore_errors: yes
+
+#################################################
+
+
+
+
+
+
+#################################################
+
+
+
+
+
+
+#################################################

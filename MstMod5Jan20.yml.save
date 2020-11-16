@@ -1,0 +1,130 @@
+---
+- name: Mst Module 5 build playbook on 20-11-2019
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - default-jre
+      - gdebi
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+
+
+# Samtools ################################################
+
+  - name: Download and extract Samtools archives
+    unarchive:
+      src:  '{{ item }}'
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+    with_items:
+      - "https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2"
+      - "https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2"
+      - "https://github.com/samtools/bcftools/releases/download/1.9/bcftools-1.9.tar.bz2"
+
+  - name: Install Samtools dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+
+  - name: Compile Samtools
+    shell: |
+      ./configure
+      make
+      make install
+    args:
+      chdir: "{{ item }}"
+    with_items:
+      - "/usr/local/htslib-1.9"
+      - "/usr/local/samtools-1.9"
+      - "/usr/local/bcftools-1.9"
+
+# FastQC ################################################
+
+  - name: Download and extract FastQC archive
+    unarchive:
+      src: "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.8.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat FastQC Symlink
+    file:
+      src: /usr/local/FastQC/fastqc
+      dest: /usr/local/bin/fastqc
+      state: link
+    ignore_errors: yes
+
+  - name: Create FastQC Desktop file
+    file:
+      path: /home/training/Desktop/fastqc.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in FastQC Desktop file
+    blockinfile:
+      path: /home/training/Desktop/fastqc.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=FastQC 0.11.8
+        Icon=/usr/local/FastQC/fastqc_icon.ico
+        Exec=/usr/local/FastQC/fastqc
+
+# Hmmer ################################################
+
+  - name: Download and extract Hmmer archive
+    unarchive:
+      src: "http://eddylab.org/software/hmmer/hmmer.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Hmmer
+    shell: |
+      ./configure
+      make
+      make check
+      make install
+      cd easel; make install
+    args:
+      chdir: /usr/local/hmmer-3.3
+
+# Artemis ################################################
+
+  - name: Download and extract artemis archive
+    unarchive:
+      src: "https://github.com/sanger-pathogens/Artemis/releases/download/v18.0.3/artemis-unix-release-18.0.3.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+

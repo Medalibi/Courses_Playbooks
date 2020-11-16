@@ -1,0 +1,172 @@
+---
+- name: Structural Bioinformatics build playbook on 13-09-2019
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - gdebi
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+
+# Pymol ################################################
+
+  - name: Download pymol opensource
+    git:
+      repo: https://github.com/schrodinger/pymol-open-source.git
+      dest: /usr/local/pymol
+      
+  - name: Change pymol folder permissions
+    file:
+      path: /usr/local/pymol
+      mode: '0777'
+      recurse: yes
+
+  - name: Install dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - apbs
+      - blt
+      - freeglut3
+      - libblas3
+      - libgfortran4
+      - libglew2.0
+      - liblapack3
+      - libmaloc1
+      - libtcl8.6
+      - libtk8.6
+      - python-numpy
+      - python-opengl
+      - python-pmw
+      - python-tk 
+      - tk8.6-blt2.5
+      - pmw
+      - glew-utils
+      - libglew-dev
+      - libglew2.0
+      - libfreetype6-dev
+      - libfreetype6
+      - libglm-dev
+      - freeglut3 
+      - freeglut3-dev
+      - python-pyqt5 
+      - pyqt5-dev
+      - python-qtpy
+      - python-dev
+
+  - name: Compile Pymol
+    shell: python setup.py install --prefix=/usr/local/pymol
+    args:
+      chdir: /usr/local/pymol
+
+  - name: Creat Pymol Symlink
+    file:
+      src: /usr/local/pymol/bin/pymol
+      dest: /usr/local/bin/pymol
+      state: link
+    ignore_errors: yes
+
+  - name: Create Pymol Desktop file
+    file:
+      path: /home/training/Desktop/pymol.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Pymol Desktop file
+    blockinfile:
+      path: /home/training/Desktop/pymol.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Pymol 2
+        Icon=/usr/local/pymol/data/pymol/icons/icon2.svg
+        Exec=/usr/local/pymol/bin/pymol
+
+# Chimera ################################################
+
+
+# ChimeraX ################################################
+
+ - name: Install Chimerax Deb package
+    apt:
+      deb: "https://www.rbvi.ucsf.edu/chimerax/cgi-bin/secure/chimerax-get.py?file=ubuntu-18.04/chimerax-daily.deb"
+
+  - name: Copy Chimerax Desktop file
+    copy:
+      src: /usr/share/applications/UCSF-ChimeraX-0.91.desktop
+      dest: /home/training/Desktop/UCSF-ChimeraX-0.91.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+# Hmmer ################################################
+
+  - name: Download and extract Hmmer archive
+    unarchive:
+      src: "http://eddylab.org/software/hmmer/hmmer.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Hmmer
+    shell: |
+      ./configure
+      make
+      make check
+      make install
+      cd easel; make install
+    args:
+      chdir: /usr/local/hmmer-3.2.1
+
+# MAFFT ################################################
+
+ - name: Install MAFFT Deb package
+    apt:
+      deb: "https://mafft.cbrc.jp/alignment/software/mafft_7.450-1_amd64.deb"
+
+# Fiji  ################################################
+
+  - name: Download and extract Fiji archive
+    unarchive:
+      src: "https://downloads.imagej.net/fiji/latest/fiji-linux64.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat Fiji Symlink
+    file:
+      src: /usr/local/Fiji.app/ImageJ-linux64
+      dest: /usr/local/bin/ImageJ
+      state: link
+    ignore_errors: yes
+
+  - name: Copy Fiji Desktop file
+    copy:
+      src: /usr/local/Fiji.app/ImageJ2.desktop
+      dest: /home/training/Desktop/ImageJ2.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+#################################################

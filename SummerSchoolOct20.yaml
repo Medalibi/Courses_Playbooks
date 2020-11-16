@@ -1,0 +1,437 @@
+---
+- name: Summer School Oct 2020 (Virtual) build playbook on 18-09-2020
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - expect
+      - bwa
+
+  - name: Install Python Pip
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+
+  - name: Install Jupyter etc
+    shell: pip3 install -U jupyter pandas matplotlib requests solrq numpy scipy
+
+# COPASI 4.29 ################################################
+  - name: Download and extract COPASI 4.29 archive
+    unarchive:
+      src: "https://github.com/copasi/COPASI/releases/download/Build-228/COPASI-4.29.228-Linux-64bit.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create CopasiSE symlink
+    file:
+      src: /usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiSE
+      dest: /usr/local/bin/CopasiSE
+      state: link
+    ignore_errors: yes
+
+  - name: Create CopasiUI symlink
+    file:
+      src: /usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiUI
+      dest: /usr/local/bin/CopasiUI
+      state: link
+    ignore_errors: yes
+
+  - name: Create Copasi Desktop file
+    file:
+      path: /home/training/Desktop/Copasi.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Copaci Desktop file
+    blockinfile:
+      path: /home/training/Desktop/Copasi.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=COPASI 4.29
+        Icon=/usr/local/COPASI-4.29.228-Linux-64bit/share/copasi/icons/Copasi48-Alpha.xpm
+        Exec=/usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiUI
+
+# Cytoscape 3.8.0 ################################################
+  - name: Download Cytoscape
+    get_url:
+      url: "https://github.com/cytoscape/cytoscape/releases/download/3.8.0/Cytoscape_3_8_0_unix.sh"
+      dest: /usr/local/Cytoscape_3_8_0_unix.sh
+      mode: '0777'
+
+  - name: Install Cytoscape
+    shell: ./Cytoscape_3_8_0_unix.sh -q
+    args:
+      chdir: /usr/local/
+
+  - name: Create Cytoscape Symlink
+    file:
+      src: /usr/local/Cytoscape_v3.8.0/cytoscape.sh
+      dest: /usr/local/bin/cytoscape
+      state: link
+    ignore_errors: yes
+
+  - name: Delete Cytoscape installer
+    file:
+      path: /usr/local/Cytoscape_3_8_0_unix.sh
+      state: absent
+    ignore_errors: yes
+
+  - name: Copy Cytoscape Desktop file
+    copy:
+      src: /usr/local/Cytoscape_v3.8.0/Cytoscape.desktop
+      dest: /home/training/Desktop/Cytoscape.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+# R and Rstudio ################################################
+
+  - name: Add R CRAN apt key
+    apt_key:
+      keyserver: keyserver.ubuntu.com
+      id: E298A3A825C0D65DFD57CBB651716619E084DAB9
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran40/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install RStudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.3.1073-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("ggplot2", "reshape2", "plotly"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# Samtools ################################################
+
+  - name: Download and extract Samtools archives
+    unarchive:
+      src:  '{{ item }}'
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+    with_items:
+      - "https://github.com/samtools/htslib/releases/download/1.10.2/htslib-1.10.2.tar.bz2"
+      - "https://github.com/samtools/samtools/releases/download/1.10/samtools-1.10.tar.bz2"
+      - "https://github.com/samtools/bcftools/releases/download/1.10.2/bcftools-1.10.2.tar.bz2"
+
+  - name: Install Samtools dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+
+  - name: Compile Samtools
+    shell: |
+      ./configure
+      make
+      make install
+    args:
+      chdir: "{{ item }}"
+    with_items:
+      - "/usr/local/htslib-1.10.2"
+      - "/usr/local/samtools-1.10"
+      - "/usr/local/bcftools-1.10.2"
+
+# IGV ################################################
+
+  - name: Download and extract IGV archive
+    unarchive:
+      src: "https://data.broadinstitute.org/igv/projects/downloads/2.8/IGV_Linux_2.8.9.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Setup IGV binary and link
+    shell: |
+      sed -i 's/\"$prefix\"/\/usr\/local\/IGV_Linux_2.8.9/g' /usr/local/IGV_Linux_2.8.9/igv.sh
+      ln -sf /usr/local/IGV_Linux_2.8.9/igv.sh /usr/local/bin/igv
+    ignore_errors: yes
+
+  - name: Create IGV Desktop file
+    file:
+      path: /home/training/Desktop/igv.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in IGV Desktop file
+    blockinfile:
+      path: /home/training/Desktop/igv.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=IGV 2.8.9
+        Icon=/usr/local/IGV_Linux_2.8.9/IGV_64.png
+        Exec=/usr/local/IGV_Linux_2.8.9/igv.sh
+
+# GATK ################################################
+
+  - name: Download and extract GATK archive
+    unarchive:
+      src: "https://github.com/broadinstitute/gatk/releases/download/4.1.8.1/gatk-4.1.8.1.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat GATK Symlink
+    file:
+      src: /usr/local/gatk-4.1.8.1/gatk
+      dest: /usr/local/bin/gatk
+      state: link
+    ignore_errors: yes
+
+# Chimera  ################################################
+  - name: Copy Chimera bin file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/chimera-1.14-linux_x86_64.bin
+      dest: /usr/local/chimera.bin
+      mode: 0777
+
+  - name: Install Chimera
+    shell: echo /usr/local/chimera | /usr/local/chimera.bin
+
+  - name: Create Chimera Symlink
+    file:
+      src: /usr/local/chimera/bin/chimera
+      dest: /usr/local/bin/chimera
+      state: link
+    ignore_errors: yes
+
+  - name: Install Chimera Desktop icon
+    shell: /usr/local/chimera/bin/xdg-setup install
+    become: yes
+    become_user: training
+    ignore_errors: yes
+
+  - name: Delete Chimera installer
+    file:
+      path: /usr/local/chimera.bin
+      state: absent
+    ignore_errors: yes
+
+# Pymol edu ################################################
+  - name: Download and extract Pymol Edu archive
+    unarchive:
+      src: "https://pymol.org/installers/PyMOL-2.4.0_178-Linux-x86_64-py37.tar.bz2"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Copy Pymol licence file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/pymol-edu-license-jun2020.lic
+      dest: /usr/local/pymol/share/pymol/license.lic
+      mode: 0777
+
+  - name: Create Pymol Symlink
+    file:
+      src: /usr/local/pymol/pymol
+      dest: /usr/local/bin/pymol
+      state: link
+    ignore_errors: yes
+
+  - name: Create Pymol Desktop file
+    file:
+      path: /home/training/Desktop/pymol.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Pymol Desktop file
+    blockinfile:
+      path: /home/training/Desktop/pymol.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Pymol 2.4
+        Icon=/usr/local/pymol/share/pymol/data/pymol/icons/icon2_128x128.png
+        Exec=/usr/local/pymol/pymol
+
+# Weka ################################################
+  - name: Download and extract Weka archive
+    unarchive:
+      src: "https://prdownloads.sourceforge.net/weka/weka-3-8-4-azul-zulu-linux.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Weka Symlink
+    file:
+      src: /usr/local/weka-3-8-4/weka.sh
+      dest: /usr/local/bin/weka
+      state: link
+    ignore_errors: yes
+
+  - name: Create Weka Desktop file
+    file:
+      path: /home/training/Desktop/weka.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Weka Desktop file
+    blockinfile:
+      path: /home/training/Desktop/pymol.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Weka 3.8.4
+        Icon=/usr/local/weka-3-8-4/weka.ico
+        Exec=/usr/local/weka-3-8-4/weka.sh
+# Bedtools2 ################################################
+
+  - name: Download and extract Bedtools2 archive
+    unarchive:
+      src: "https://github.com/arq5x/bedtools2/releases/download/v2.29.2/bedtools-2.29.2.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Bedtools2
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/bedtools2
+    ignore_errors: yes

@@ -1,0 +1,156 @@
+---
+- name: Mathematics of Life: Modelling Molecular Mechanism Sep 2020 (Virtual) build playbook on 02-09-2020
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+
+  - name: Install tools already available in ubuntu repo
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - vlc
+      - gnuplot
+      - kate
+      - ffmpeg
+
+# Morpheus 2.2.0 beta3 ################################################
+
+  - name: Install Morpheus from deb file link
+    apt:
+      deb: https://imc.zih.tu-dresden.de/morpheus/packages/dists/bionic/public/binary-amd64/morpheus_2.2.0~beta3.deb
+
+# COPASI 4.29 ################################################
+  - name: Download and extract COPASI 4.29 archive
+    unarchive:
+      src: "https://github.com/copasi/COPASI/releases/download/Build-228/COPASI-4.29.228-Linux-64bit.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create CopasiSE symlink
+    file:
+      src: /usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiSE
+      dest: /usr/local/bin/CopasiSE
+      state: link
+    ignore_errors: yes
+
+  - name: Create CopasiUI symlink
+    file:
+      src: /usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiUI
+      dest: /usr/local/bin/CopasiUI
+      state: link
+    ignore_errors: yes
+
+  - name: Create Copasi Desktop file
+    file:
+      path: /home/training/Desktop/Copasi.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in COPASI Desktop file
+    blockinfile:
+      path: /home/training/Desktop/Copasi.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=COPASI 4.29
+        Icon=/usr/local/COPASI-4.29.228-Linux-64bit/share/copasi/icons/Copasi48-Alpha.xpm
+        Exec=/usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiUI
+
+# Cytoscape 3.8.0 ################################################
+  - name: Download Cytoscape
+    get_url:
+      url: "https://github.com/cytoscape/cytoscape/releases/download/3.8.0/Cytoscape_3_8_0_unix.sh"
+      dest: /usr/local/Cytoscape_3_8_0_unix.sh
+      mode: '0777'
+
+  - name: Install Cytoscape
+    shell: ./Cytoscape_3_8_0_unix.sh -q
+    args:
+      chdir: /usr/local/
+
+  - name: Create Cytoscape Symlink
+    file:
+      src: /usr/local/Cytoscape_v3.8.0/cytoscape.sh
+      dest: /usr/local/bin/cytoscape
+      state: link
+    ignore_errors: yes
+
+  - name: Delete Cytoscape installer
+    file:
+      path: /usr/local/Cytoscape_3_8_0_unix.sh
+      state: absent
+    ignore_errors: yes
+
+  - name: Copy Cytoscape Desktop file
+    copy:
+      src: /usr/local/Cytoscape_v3.8.0/Cytoscape.desktop
+      dest: /home/training/Desktop/Cytoscape.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'

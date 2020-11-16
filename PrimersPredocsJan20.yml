@@ -1,0 +1,233 @@
+---
+- name: Primer for Predocs Jan20 build playbook on 29-11-2019
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - default-jre
+      - gdebi
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+
+# R and Rstudio ################################################
+
+  - name: Add R cran apt repository
+    apt_repository:
+      repo: 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/'
+      state: present
+      filename: rcran
+      update_cache: yes
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - r-base
+        - r-base-core
+        - r-recommended
+      update_cache: yes
+
+  - name: Change R libs file permissions
+    file:
+      path: '{{ item }}'
+      mode: '0777'
+      recurse: yes
+    with_items:
+      - /usr/share/R
+      - /usr/lib/R
+      - /usr/local/lib/R
+
+  - name: Install rstudio Deb package
+    apt:
+      deb: https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.5019-amd64.deb
+
+  - name: Copy Rstudio Desktop file
+    copy:
+      src: /usr/share/applications/rstudio.desktop
+      dest: /home/training/Desktop/rstudio.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Install R cran and dependencies
+    apt:
+      name:
+        - libxml2-dev
+        - libxml2
+        - liblzma-dev
+        - curl
+        - libcurl4-openssl-dev
+      update_cache: yes
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("rstan", "rjags"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+# MiniConda ################################################
+
+  - name: Download Miniconda3
+    get_url:
+      url: "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+      dest: /usr/local/Miniconda3.sh
+      mode: '0777'
+
+  - name: Install Apt requirements
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+        - python-dev
+        - python-pip
+      update_cache: yes
+
+  - name: Install Pip requirements
+    shell: pip3 install -U Requests pycosat PyYaml Snakemake
+
+  - name: Install Miniconda3
+    shell: /usr/local/Miniconda3.sh -b
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Create Conda Symlink
+    file:
+      src: /home/training/miniconda3/bin/conda
+      dest: /usr/local/bin/conda
+      state: link
+    ignore_errors: yes
+
+  - name: Delete Conda installer
+    file:
+      path: /usr/local/Miniconda3.sh
+      state: absent
+    ignore_errors: yes
+
+  - name: Install R cran via MiniConda
+    shell: conda create -n r_env -y -c conda-forge r-base r-essentials r-rstan r-rjags
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Install R cran via MiniConda
+    shell: conda create -n python_env -y python3-pip snakemake 
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+# Singularity ################################################
+
+  - name: Install Singularity apt requirements
+    apt:
+      name:
+        - build-essential
+        - libssl-dev
+        - uuid-dev
+        - libseccomp-dev
+        - pkg-config
+        - squashfs-tools
+        - cryptsetup
+        - curl
+      update_cache: yes
+
+#  - name: Download and extract Singularity
+#    unarchive:
+#      src: "https://github.com/sylabs/singularity/releases/download/v3.5.1/singularity-3.5.1.tar.gz"
+#      dest: /home/training/
+#      remote_src: yes
+#      mode: '0777'
+
+  - name: Set Golangci envirenment
+    blockinfile:
+      path: /home/training/.bashrc
+      block: |
+        export GOPATH=/home/training/go
+        export PATH=/usr/local/go/bin:${PATH}:/home/training/go/bin
+
+  - name: Install go
+    snap:
+      name: go
+      classic: yes
+
+
+  - name: Prepare app folders
+    shell: |
+      mkdir /home/training/go
+      mkdir -p /home/training/go/src/github.com/sylabs    
+    become: yes
+    become_user: training
+
+  - name: Download singularity
+    git: 
+      repo: 'https://github.com/sylabs/singularity.git'
+      dest: /home/training/go/src/github.com/sylabs/singularity
+      version: v3.5.1      
+    become: yes
+    become_user: training
+
+  - name: Compile singularity
+    shell: |
+      ./mconfig
+      cd ./builddir
+      make
+    args:
+      chdir: /home/training/go/src/github.com/sylabs/singularity
+    become: yes
+    become_user: training
+
+  - name: install singularity
+    shell: make install
+    args:
+      chdir: /home/training/go/src/github.com/sylabs/singularity/builddir
+
+# Jupyter ################################################
+
+  - name: Install Jupyter requirements
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+
+  - name: Install Jupyter
+    shell: pip3 install -U jupyter
