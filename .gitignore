@@ -129,6 +129,8 @@ dmypy.json
 **.tar.gz
 **.deb
 **.save
+**.save.1
+**.save.*
 **.d
 **.bin
 **.cfg
