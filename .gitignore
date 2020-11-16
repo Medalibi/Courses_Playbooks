@@ -134,3 +134,8 @@ dmypy.json
 **.d
 **.bin
 **.cfg
+**.cwl
+**.fq
+**.sam
+**.fa
+**.tgz
