@@ -1,0 +1,326 @@
+---
+- name: BioExcel Winter School December 2020 (Virtual) build playbook on 18-09-2020
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - expect
+      - bwa
+
+  - name: Install Python Pip
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+
+  - name: Install Jupyter etc
+    shell: pip3 install -U jupyter pandas matplotlib requests solrq numpy scipy
+
+# Pymol edu ################################################
+  - name: Download and extract Pymol Edu archive
+    unarchive:
+      src: "https://pymol.org/installers/PyMOL-2.4.1_198-Linux-x86_64-py37.tar.bz2"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Copy Pymol licence file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/pymol-edu-license-jun2020.lic
+      dest: /usr/local/pymol/share/pymol/license.lic
+      mode: 0777
+
+  - name: Create Pymol Symlink
+    file:
+      src: /usr/local/pymol/pymol
+      dest: /usr/local/bin/pymol
+      state: link
+    ignore_errors: yes
+
+  - name: Create Pymol Desktop file
+    file:
+      path: /home/training/Desktop/pymol.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Pymol Desktop file
+    blockinfile:
+      path: /home/training/Desktop/pymol.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Pymol 2.4
+        Icon=/usr/local/pymol/share/pymol/data/pymol/icons/icon2_128x128.png
+        Exec=/usr/local/pymol/pymol
+
+# Anaconda ################################################
+  - name: Download Anaconda3
+    get_url:
+      url: "https://repo.anaconda.com/archive/Anaconda3-2020.07-Linux-x86_64.sh"
+      dest: /usr/local/Anaconda3.sh
+      mode: '0777'
+
+  - name: Install anaconda3 requirements
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+        - libgl1-mesa-glx
+        - libegl1-mesa
+        - libxrandr2
+        - libxrandr2
+        - libxss1
+        - libxcursor1
+        - libxcomposite1
+        - libasound2
+        - libxi6
+        - libxtst6
+      update_cache: yes
+
+  - name: Install Pip requirements
+    shell: pip3 install -U Requests pycosat PyYaml Snakemake
+
+  - name: Install Anaconda3
+    shell: /usr/local/Anaconda3.sh -b
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Create Conda Symlink
+    file:
+      src: /home/training/anaconda3/bin/conda
+      dest: /usr/local/bin/conda
+      state: link
+    ignore_errors: yes
+
+  - name: Update Anaconda3
+    shell: |
+      source /home/training/anaconda3/bin/activate
+      conda init
+      conda update conda
+      conda config --set auto_activate_base true
+
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Delete Conda installer
+    file:
+      path: /usr/local/Anaconda3.sh
+      state: absent
+    ignore_errors: yes
+
+# rdkit ################################################
+  - name: Install rdkit
+    shell: |
+      source /home/training/anaconda3/bin/activate
+      conda init
+      conda create -y --name myenv
+      conda activate myenv
+      conda install -y -c conda-forge rdkit
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    async: 120
+    poll: 0
+
+# VMD ################################################
+  - name: Copy VMD archive
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/vmd-1.9.3.bin.LINUXAMD64-CUDA8-OptiX4-OSPRay111p1.opengl.tar.gz
+      dest: /usr/local/vmd.tar.gz
+      mode: 0777
+
+  - name: Extract VMD archive
+    unarchive:
+      src: /usr/local/vmd.tar.gz
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile VMD
+    shell: |
+      ./configure LINUXAMD64
+      cd ./src
+      make
+      make install
+    args:
+      chdir: /usr/local/vmd-1.9.3
+
+  - name: Fix VMD SSE4.1. requirements
+    shell: |
+      echo "export VMDNOOSPRAY=1" >> /home/training/.profile
+      echo "export VMDNOOSPRAY=1" >> /home/training/.bashrc
+      echo "export VMDNOOSPRAY=1" >> /etc/bash.bashrc
+
+  - name: Delete VMD archive
+    file:
+      path: /usr/local/vmd.tar.gz
+      state: absent
+    ignore_errors: yes
+
+# Gromacs 2019 and Plumed ################################################
+  - name: install Gromacs 2019 deps
+    shell: apt install -y doxygen libnl-utils graphviz fftw-dev fftw-docs fftw2 libfftw3-3 libfftw3-bin libfftw3-dev libfftw3-doc libfftw3-long3 libfftw3-quad3 sfftw-dev sfftw2 libopenmpi-dev
+
+  - name: Download and extract Gromacs 2019 archive
+    unarchive:
+      src: "ftp://ftp.gromacs.org/pub/gromacs/gromacs-2019.tar.gz"
+      dest: /home/training/
+      remote_src: yes
+      mode: '0777'
+      owner: training
+
+  - name: Download and extract Plumed 2.6.2 archive
+    unarchive:
+      src: "https://github.com/plumed/plumed2/releases/download/v2.6.2/plumed-2.6.2.tgz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Plumed with MPI
+    shell: |
+      export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+      echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /etc/bash.bashrc
+      echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /home/training/.bashrc
+      ./configure --prefix=/usr/local/ CXX=mpic++ --enable-mpi
+      make -j 6
+      make check -j 6
+      make doc -j 6
+      make test -j 6
+      umask 022
+      make install
+      sudo ldconfig
+    args:
+      chdir: /usr/local/plumed-2.6.2/
+
+  - name: Patch Gromacs 2019 with Plumed
+    shell: |
+      export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+      plumed patch -p -e gromacs-2019.6
+    args:
+      chdir: /home/training/gromacs-2019/
+
+  - name: Compile Gromacs 2019
+    shell: |
+      mkdir build
+      cd ./build
+      cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON -DGMX_MPI=on -DCMAKE_INSTALL_PREFIX=/home/training/gromacs-2019
+      make -j 6
+      make check -j 6
+      sudo make install
+    args:
+      chdir: /home/training/gromacs-2019
+
+# Gromacs 2020.4  ################################################
+  - name: install Gromacs deps
+    shell: apt install -y doxygen libnl-utils graphviz fftw-dev fftw-docs fftw2 libfftw3-3 libfftw3-bin libfftw3-dev libfftw3-doc libfftw3-long3 libfftw3-quad3 sfftw-dev sfftw2 libopenmpi-dev
+
+  - name: Download and extract Gromacs 2020.4 archive
+    unarchive:
+      src: "ftp://ftp.gromacs.org/pub/gromacs/gromacs-2020.4.tar.gz"
+      dest: /home/training/
+      remote_src: yes
+      mode: '0777'
+      owner: training
+
+  - name: Compile Gromacs 2020.4
+    shell: |
+      mkdir build
+      cd ./build
+      cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON -DGMX_MPI=on -DCMAKE_INSTALL_PREFIX=/home/training/gromacs-2020.4
+      make -j 6
+      make check -j 6
+      sudo make install
+    args:
+      chdir: /home/training/gromacs-2020.4
+
+# PMX ################################################
+  - name: Download pmx opensource
+    git:
+      repo: https://github.com/deGrootLab/pmx.git
+      dest: /usr/local/pmx
+      version: develop
+    ignore_errors: yes
+
+  - name: Change pmx folder permissions
+    file:
+      path: /usr/local/pmx
+      mode: '0777'
+      recurse: yes
+
+  - name: Install pmx python3 packages
+    shell: pip3 install -U matplotlib numpy scipy
+
+  - name: Install pmx
+    shell: |
+      python3 setup.py install
+      pip3 install .
+    args:
+      chdir:  /usr/local/pmx

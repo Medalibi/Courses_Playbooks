@@ -6,7 +6,7 @@ ansible_become-method=sudo
 
 [localmachine]
 
-coursevm      ansible_host=10.33.32.53
+coursevm      ansible_host=10.33.32.52
 
 
 
