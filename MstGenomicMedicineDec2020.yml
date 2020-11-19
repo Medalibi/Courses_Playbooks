@@ -1,0 +1,374 @@
+---
+- name: Mst Genomec Medicine December 2020 (Virtual) build playbook on 18-11-2020
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Update the software cache
+    apt: update_cache=yes
+
+  - name: make sure aptitude is installed
+    apt:
+      name: aptitude
+
+  - name: Upgrade all software
+    apt: upgrade=yes
+
+  - name: Remove useless packages from the cache
+    apt:
+      autoclean: yes
+
+  - name: Remove dependencies that are no longer required
+    apt:
+      autoremove: yes
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - expect
+      - bwa
+
+  - name: Install Python Pip
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+
+  - name: Install Jupyter etc
+    shell: pip3 install -U jupyter pandas matplotlib requests solrq numpy scipy
+
+# Samtools 1.11 ################################################
+  - name: Download and extract Samtools archives
+    unarchive:
+      src:  '{{ item }}'
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+    with_items:
+      - "https://github.com/samtools/htslib/releases/download/1.11/htslib-1.11.tar.bz2"
+      - "https://github.com/samtools/samtools/releases/download/1.11/samtools-1.11.tar.bz2"
+      - "https://github.com/samtools/bcftools/releases/download/1.11/bcftools-1.11.tar.bz2"
+
+  - name: Install Samtools dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - autoconf
+
+  - name: Compile Samtools
+    shell: |
+      autoheader
+      autoconf
+      ./configure --enable-libgsl --enable-perl-filters
+      make
+      make install
+    args:
+      chdir: "{{ item }}"
+    with_items:
+      - "/usr/local/htslib-1.11"
+      - "/usr/local/samtools-1.11"
+      - "/usr/local/bcftools-1.11"
+
+# FastQC 0.11.9 ################################################
+  - name: Download and extract FastQC archive
+    unarchive:
+      src: "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.9.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat FastQC Symlink
+    file:
+      src: /usr/local/FastQC/fastqc
+      dest: /usr/local/bin/fastqc
+      state: link
+    ignore_errors: yes
+
+  - name: Create FastQC Desktop file
+    file:
+      path: /home/training/Desktop/fastqc.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in FastQC Desktop file
+    blockinfile:
+      path: /home/training/Desktop/fastqc.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=FastQC 0.11.9
+        Icon=/usr/local/FastQC/fastqc_icon.ico
+        Exec=/usr/local/FastQC/fastqc
+
+
+# IGV ################################################
+  - name: Download and extract IGV archive
+    unarchive:
+      src: "https://data.broadinstitute.org/igv/projects/downloads/2.8/IGV_Linux_2.8.12_WithJava.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Setup IGV binary and link
+    shell: |
+      sed -i 's/\"$prefix\"/\/usr\/local\/IGV_Linux_2.8.12/g' /usr/local/IGV_Linux_2.8.12/igv.sh
+      ln -sf /usr/local/IGV_Linux_2.8.12/igv.sh /usr/local/bin/igv
+    ignore_errors: yes
+
+  - name: Create IGV Desktop file
+    file:
+      path: /home/training/Desktop/igv.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in IGV Desktop file
+    blockinfile:
+      path: /home/training/Desktop/igv.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=IGV 2.8.12
+        Icon=/usr/local/IGV_Linux_2.8.12/IGV_64.png
+        Exec=/usr/local/IGV_Linux_2.8.12/igv.sh
+
+# Ensembl-VEP ################################################
+  - name: Download ensembl-vep git repo
+    git:
+      repo: https://github.com/Ensembl/ensembl-vep.git
+      dest: /usr/local/ensembl-vep
+    ignore_errors: yes
+
+  - name: Change ensembl-vep folder permissions
+    file:
+      path: /usr/local/ensembl-vep
+      mode: '0777'
+      recurse: yes
+
+  - name: Install BigWig apt dependencies
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - libpng-dev
+      - libssl-dev
+      - mysql-client
+      - mysql-server
+      - libmysqlclient-dev
+      - cpanminus
+      - clustalw
+
+  - name: Download and extract BigWig archive for Bio::DB::BigFile perl module to work
+    unarchive:
+      src: "https://github.com/ucscGenomeBrowser/kent/archive/v335_base.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Configure BigWig
+    shell: |
+      export KENT_SRC=/usr/local/kent-335_base/src
+      export MACHTYPE=$(uname -m)
+      export CFLAGS="-fPIC"
+      export MYSQLINC=`mysql_config --include | sed -e 's/^-I//g'`
+      export MYSQLLIBS=$(`mysql_config --libs`)
+      cd $KENT_SRC/lib
+      echo 'CFLAGS="-fPIC"' > ../inc/localEnvironment.mk
+      make clean && make
+      cd ../jkOwnLib
+      make clean && make
+    args:
+      chdir: /usr/local/kent-335_base/src
+
+  - name: Fake install of XML-DOM-XPath
+    shell: |
+      cpan XML::DOM::XPath 2>/dev/null
+    ignore_errors: yes
+
+  - name: Configure XML-DOM-XPath
+    shell: |
+      tar -xzvf XML-DOM-XPath-0.14.tar.gz
+      sed -i "s/use encoding 'utf8';/use utf8;/g" /root/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14/t/test_non_ascii.t
+      tar -czvf /root/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14.tar.gz /root/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14/
+      MD5SM=$(md5sum /root/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14.tar.gz | awk '{print $1}')
+      SH255SM=$(sha256sum /root/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14.tar.gz | awk '{print $1}')
+      sed -i "s/51a40df96c2f92829e1a4f84782fa75e/$MD5SM/g" /root/.cpan/sources/authors/id/M/MI/MIROD/CHECKSUMS
+      sed -i "s/0173a74a515211997a3117a47e7b9ea43594a04b865b69da5a71c0886fa829ea/$SH255SM/g" /root/.cpan/sources/authors/id/M/MI/MIROD/CHECKSUMS
+    args:
+      chdir: /root/.cpan/sources/authors/id/M/MI/MIROD/
+
+  - name: Fake install of XML-DOM-XPath for training
+    shell: |
+      cpan XML::DOM::XPath 2>/dev/null
+    become: yes
+    become_user: training
+    ignore_errors: yes
+
+  - name: Configure XML-DOM-XPath for user training
+    shell: |
+      tar -xzvf XML-DOM-XPath-0.14.tar.gz
+      sed -i "s/use encoding 'utf8';/use utf8;/g" /home/training/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14/t/test_non_ascii.t
+      tar -czvf /home/training/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14.tar.gz /home/training/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14/
+      MD5SM=$(md5sum /home/training/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14.tar.gz | awk '{print $1}')
+      SH255SM=$(sha256sum /home/training/.cpan/sources/authors/id/M/MI/MIROD/XML-DOM-XPath-0.14.tar.gz | awk '{print $1}')
+      sed -i "s/51a40df96c2f92829e1a4f84782fa75e/$MD5SM/g" /home/training/.cpan/sources/authors/id/M/MI/MIROD/CHECKSUMS
+      sed -i "s/0173a74a515211997a3117a47e7b9ea43594a04b865b69da5a71c0886fa829ea/$SH255SM/g" /home/training/.cpan/sources/authors/id/M/MI/MIROD/CHECKSUMS
+    args:
+      chdir: /home/training/.cpan/sources/authors/id/M/MI/MIROD/
+    become: yes
+    become_user: training
+
+  - name: Install new fixed XML-DOM-XPath
+    shell: cpan XML::DOM::XPath
+
+  - name: Install new fixed XML-DOM-XPath for training
+    shell: cpan XML::DOM::XPath
+    become: yes
+    become_user: training
+
+  - name: Download and extract jksrc
+    unarchive:
+      src: "http://hgdownload.cse.ucsc.edu/admin/jksrc.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install pre-requests perl packages for ensembl-vep
+    shell: cpan Archive::Zip DBD::mysql DBI JSON Set::IntervalTree PerlIO::gzip
+
+  - name: Install pre-requests perl packages for ensembl-vep for training
+    shell: cpan Archive::Zip DBD::mysql DBI JSON Set::IntervalTree PerlIO::gzip
+    become: yes
+    become_user: training
+
+  - name: Download and extract ensembl-xs
+    unarchive:
+      src: "https://github.com/Ensembl/ensembl-xs/archive/2.3.2.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  #- name: Install ensembl-xs
+    #shell: |
+    #  perl Makefile.PL
+    #  make
+    #  make test
+    #  sudo make install
+    #  perldoc Bio::EnsEMBL::XS
+    #args:
+    #  chdir: /usr/local/ensembl-xs-2.3.2
+
+  #- name: Install ensembl-vep
+  #  shell: |
+  #    perl INSTALL.pl
+  #  args:
+  #    chdir: /usr/local/ensembl-vep
+
+# vcftools ################################################
+  - name: Download and extract vcftools archive
+    unarchive:
+      src: "https://github.com/vcftools/vcftools/releases/download/v0.1.16/vcftools-0.1.16.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile vcftools
+    shell: |
+      ./configure
+      make
+      sudo make install
+    args:
+      chdir: "/usr/local/vcftools-0.1.16"
+
+# Docker ################################################
+  - name: Install required system packages
+    apt: name={{ item }} state=latest update_cache=yes
+    loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+  - name: Add Docker GPG apt Key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+
+  - name: Add Docker Repository
+    apt_repository:
+      repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+      state: present
+
+  - name: Update apt and install docker-ce
+    apt: update_cache=yes name=docker-ce state=latest
+
+  - name: Install Docker Module for Python
+    pip:
+      name: docker
+
+  - name: Add the user 'training' to docker group
+    user:
+      name: training
+      group: docker
+    ignore_errors: yes
+
+  - name: Add the user 'setup' to docker group
+    user:
+      name: setup
+      group: docker
+    ignore_errors: yes
+# Ensembl-VEP Docker ################################################
+  - name: Pull Ensembl-VEP image
+    community.general.docker_image:
+      name: ensemblorg/ensembl-vep
+      source: pull
