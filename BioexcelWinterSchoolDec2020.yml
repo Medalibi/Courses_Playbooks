@@ -217,7 +217,7 @@
     shell: |
       echo "export VMDNOOSPRAY=1" >> /home/training/.profile
       echo "export VMDNOOSPRAY=1" >> /home/training/.bashrc
-      echo "export VMDNOOSPRAY=1" >> /etc/bash.bashrc
+      ##echo "export VMDNOOSPRAY=1" >> /etc/bash.bashrc
 
   - name: Delete VMD archive
     file:
@@ -247,8 +247,8 @@
   - name: Compile Plumed with MPI
     shell: |
       export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-      echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /etc/bash.bashrc
-      echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /home/training/.bashrc
+      ##echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /etc/bash.bashrc
+      ##echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /home/training/.bashrc
       ./configure --prefix=/usr/local/ CXX=mpic++ --enable-mpi
       make -j 6
       make check -j 6
@@ -294,7 +294,7 @@
     shell: |
       mkdir build
       cd ./build
-      cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON -DGMX_MPI=on -DCMAKE_INSTALL_PREFIX=/home/training/gromacs-2020.4
+      cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON -DCMAKE_INSTALL_PREFIX=/home/training/gromacs-2020.4
       make -j 6
       make check -j 6
       sudo make install

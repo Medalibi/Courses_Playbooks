@@ -372,3 +372,19 @@
     community.general.docker_image:
       name: ensemblorg/ensembl-vep
       source: pull
+
+# GATK ################################################
+
+  - name: Download and extract GATK archive
+    unarchive:
+      src: "https://github.com/broadinstitute/gatk/releases/download/4.1.8.1/gatk-4.1.8.1.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Creat GATK Symlink
+    file:
+      src: /usr/local/gatk-4.1.8.1/gatk
+      dest: /usr/local/bin/gatk
+      state: link
+    ignore_errors: yes
