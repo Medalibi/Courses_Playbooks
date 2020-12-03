@@ -388,3 +388,23 @@
       dest: /usr/local/bin/gatk
       state: link
     ignore_errors: yes
+
+# Bedtools2 ################################################
+  - name: Download and extract Bedtools2 archive
+    unarchive:
+      src: "https://github.com/arq5x/bedtools2/releases/download/v2.29.2/bedtools-2.29.2.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Bedtools2
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/bedtools2
+    ignore_errors: yes
+
+# Get Practical datasets ################################################
+  - name: Download the practical datasets
+    shell: wget --no-check-certificate 'https://drive.google.com/drive/folders/1D9WFQAL6z5-zubP1Mnzt2BQgXvSMz2NU?usp=sharing' -O /home/training/fastq
