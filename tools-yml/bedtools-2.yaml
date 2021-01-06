@@ -1,0 +1,14 @@
+  - name: Download and extract Bedtools2 archive
+    unarchive:
+      src: "https://github.com/arq5x/bedtools2/releases/download/v2.29.2/bedtools-2.29.2.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Bedtools2
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/bedtools2
+    ignore_errors: yes

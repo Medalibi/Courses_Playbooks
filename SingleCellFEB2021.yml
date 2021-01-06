@@ -1,0 +1,239 @@
+---
+- name: Single Cell Feb 2021 (Virtual) build playbook on 04-01-2021
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - expect
+      - axel
+
+  - name: Install Python Pip
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+
+  - name: Install Jupyter etc
+    shell: pip3 install -U jupyter pandas matplotlib requests solrq numpy scipy gdown
+
+# Installing tools ################################################
+
+  - include: tools-yml/samtools-1.11.yaml
+  - include: tools-yml/hisat2-2.2.1.yaml
+  - include: tools-yml/nextflow.yaml
+  - include: tools-yml/R-40.yaml
+  - include: tools-yml/cellranger-5.0.1.yaml
+  - include: tools-yml/subread-2.0.1.yaml
+  - include: tools-yml/cellphonedb_2.1.4.yaml
+
+############################################################################################
+
+  - name: Create R pkg installer file
+    file:
+      path: /usr/local/pkg_install.R
+      state: touch
+      mode: '0777'
+
+  - name: Fill in R pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("ggplot2", "grid", "parallel", "stats4", "stats", "graphics", "grDevices", "utils,datasets", "methods", "base"), ask = FALSE)
+        BiocManager::install(c("ComplexHeatmap", "glmnet", "SoupX", "harmony", "Rcpp", "patchwork", "DropletUtils", "SingleCellExperiment", "SummarizedExperiment", "DelayedArray"), ask = FALSE)
+        BiocManager::install(c("BiocParallel", "matrixStats", "Biobase", "GenomicRanges", "GenomeInfoDb", "IRanges", "S4Vectors", "BiocGenerics", "gdata", "Matrix", "dplyr2" , "Seurat"), ask = FALSE)
+
+  - name: Install R pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+  - name: Install gdown
+    shell: pip3 install -U gdown
+
+  - name: Create html file to hold course link
+    template:
+      src: /Users/alibi/Documents/Courses_Playbooks/link.html
+      dest: /home/training/Desktop/Course_Handbook.html
+      mode: 0777
+      owner: training
+      group: training
+    vars:
+      link: "https://emblebi-my.sharepoint.com/:o:/g/personal/meredith_ebi_ac_uk/EnDZyZfdi9tPuiBrvX8pbtoBlXxyh6CWQlfp5vFFPJjxCg"
+
+  - name: Create datasets folders
+    shell: mkdir -p Group_projects/Mouse_Brain Group_projects/Mouse_Embryo Group_projects/Human_Thymus Group_projects/Human_Tumour Group_projects/Human_Spleen Group_projects/Human_Fetal_Organoids HumanReference_Genome Gerda_Rasa_data
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Download Vitalii - Mouse Brain
+    shell: wget -c https://cell2location.cog.sanger.ac.uk/tutorial/mouse_brain_snrna/all_cells_20200625.h5ad
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/Group_projects/Mouse_Brain/
+
+  - name: Download and extract Mouse Embryo - Xiaohui
+    unarchive:
+      src: https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE45719&format=file
+      dest: /home/training/Group_projects/Mouse_Embryo/
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Download Human Thymus - Veronika file 1
+    shell: wget -c https://zenodo.org/record/3711134/files/HTA07.A01.v02.entire_data_raw_count.h5ad
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/Group_projects/Human_Thymus/
+
+  - name: Download Human Thymus - Veronika file 2
+    shell: wget -c https://zenodo.org/record/3711134/files/sample_metadata.xlsx
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/Group_projects/Human_Thymus/
+
+  - name: Download and extract Human Thymus - Veronika file 3
+    unarchive:
+      src: https://zenodo.org/record/3711134/files/thymus_annotated_matrix_files.zip
+      dest: /home/training/Group_projects/Human_Thymus/
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Download and extract Human Thymus - Veronika file 4
+    unarchive:
+      src: https://zenodo.org/record/3711134/files/thymus_code_package.zip
+      dest: /home/training/Group_projects/Human_Thymus/
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Download and extract Human Thymus - Veronika file 5
+    unarchive:
+      src: https://zenodo.org/record/3711134/files/thymus_vdj.zip
+      dest: /home/training/Group_projects/Human_Thymus/
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Download and extract Gerda_Rasa_data
+    shell: |
+      gdown "https://drive.google.com/file/d/1hGf0i_NLC0ko7sCyq3CgauGqxJOR_VSt"
+      unzip ./nb_dat.zip
+      rm ./nb_dat.zip
+      chmod 777 -R ./nb_dat/
+      mv ./nb_dat/* ./
+      rm -r ./nb_dat/
+    #-O - --quiet | unzip -
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/Group_projects/Human_Tumour/
+
+  - name: Download and extract Gerda_Rasa_data
+    shell: |
+      gdown "https://drive.google.com/u/0/uc?id=1GiJ_-bLC0tTsIwdzdcXkKApWCvkY0XF9"
+      unzip ./FILES_FOR_COURSE.zip
+      rm ./FILES_FOR_COURSE.zip
+      chmod 777 -R ./FILES_FOR_COURSE/
+      mv ./FILES_FOR_COURSE/* ./
+      rm -r ./FILES_FOR_COURSE/
+    #-O - --quiet | unzip -
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/Gerda_Rasa_data/
+  #  unarchive:
+  #    src: "https://drive.google.com/u/0/uc?export=download&confirm=XRkk&id=1GiJ_-bLC0tTsIwdzdcXkKApWCvkY0XF9"
+  #    dest: /home/training/Gerda_Rasa_data
+  #    remote_src: yes
+  #    owner: training
+  #    group: training
+  #    mode: '0777'
+
+  - name: Download Human Spleen - Elo
+    shell: wget -c https://cellgeni.cog.sanger.ac.uk/tissue-stability/spleen.cellxgene.h5ad
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/Group_projects/Human_Spleen/
+
+  - name: Upload Human fetal organoids - Rasa
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/organoid-20210105T102419Z-001.zip
+      dest: /home/training/Group_projects/Human_Fetal_Organoids/
+      owner: training
+      group: training
+      mode: 0777
+
+  - name: Extract Human fetal organoids - Rasa
+    unarchive:
+      src: /home/training/Group_projects/Human_Fetal_Organoids/organoid-20210105T102419Z-001.zip
+      dest: /home/training/Group_projects/Human_Fetal_Organoids/
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fix data structure Human fetal organoids - Rasa
+    shell: |
+      rm ./organoid-20210105T102419Z-001.zip
+      chmod 777 -R ./organoid/
+      mv ./organoid/* ./
+      rm -r ./organoid/
+    args:
+      chdir: /home/training/Group_projects/Human_Fetal_Organoids/

@@ -1,0 +1,22 @@
+  - name: Download pmx opensource
+    git:
+      repo: https://github.com/deGrootLab/pmx.git
+      dest: /usr/local/pmx
+      version: develop
+    ignore_errors: yes
+
+  - name: Change pmx folder permissions
+    file:
+      path: /usr/local/pmx
+      mode: '0777'
+      recurse: yes
+
+  - name: Install pmx python3 packages
+    shell: pip3 install -U matplotlib numpy scipy
+
+  - name: Install pmx
+    shell: |
+      python3 setup.py install
+      pip3 install .
+    args:
+      chdir:  /usr/local/pmx

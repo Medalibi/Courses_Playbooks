@@ -1,0 +1,3 @@
+  - name: Install Morpheus from deb file link
+    apt:
+      deb: https://imc.zih.tu-dresden.de/morpheus/packages/dists/bionic/public/binary-amd64/morpheus_2.2.0~beta3.deb

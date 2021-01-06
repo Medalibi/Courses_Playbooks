@@ -1,0 +1,32 @@
+  - name: Download and extract Weka archive
+    unarchive:
+      src: "https://prdownloads.sourceforge.net/weka/weka-3-8-4-azul-zulu-linux.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Weka Symlink
+    file:
+      src: /usr/local/weka-3-8-4/weka.sh
+      dest: /usr/local/bin/weka
+      state: link
+    ignore_errors: yes
+
+  - name: Create Weka Desktop file
+    file:
+      path: /home/training/Desktop/weka.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Weka Desktop file
+    blockinfile:
+      path: /home/training/Desktop/pymol.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=Weka 3.8.4
+        Icon=/usr/local/weka-3-8-4/weka.ico
+        Exec=/usr/local/weka-3-8-4/weka.sh

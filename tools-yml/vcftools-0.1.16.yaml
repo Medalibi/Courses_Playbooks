@@ -1,0 +1,25 @@
+  - name: Download and extract vcftools archive
+    unarchive:
+      src: "https://github.com/vcftools/vcftools/releases/download/v0.1.16/vcftools-0.1.16.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - gcc
+      - make
+
+  - name: Compile vcftools
+    shell: |
+      ./configure
+      make
+      sudo make install
+    args:
+      chdir: "/usr/local/vcftools-0.1.16"

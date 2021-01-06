@@ -1,0 +1,18 @@
+  - name: Download and extract STAR archive
+    unarchive:
+      src: "https://github.com/alexdobin/STAR/archive/2.7.5a.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile STAR
+    shell: |
+      make STAR
+      make install
+    args:
+      chdir: /usr/local/STAR-2.7.5a/source
+    ignore_errors: yes
+
+  - name: Create Symlink for all the tools within STAR
+    shell: ln -s /usr/local/STAR-2.7.5a/bin/Linux_x86_64/STAR* /usr/local/bin/
+    ignore_errors: yes

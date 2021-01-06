@@ -1,0 +1,11 @@
+  #- name: Download and extract CellPhoneDB archive
+  #  unarchive:
+  #    src: "https://github.com/Teichlab/cellphonedb/archive/v2.1.4.tar.gz"
+  #    dest: /usr/local/
+  #    remote_src: yes
+  #    mode: '0777'
+
+  - name: Install CellPhoneDB
+    shell: | 
+      pip3 install -U cython
+      pip3 install -U cellphonedb

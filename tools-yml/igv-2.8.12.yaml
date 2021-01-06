@@ -1,0 +1,47 @@
+  - name: Download and extract IGV archive
+    unarchive:
+      src: "https://data.broadinstitute.org/igv/projects/downloads/2.8/IGV_Linux_2.8.12_WithJava.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+
+  - name: Setup IGV binary and link
+    shell: |
+      sed -i 's/\"$prefix\"/\/usr\/local\/IGV_Linux_2.8.12/g' /usr/local/IGV_Linux_2.8.12/igv.sh
+      ln -sf /usr/local/IGV_Linux_2.8.12/igv.sh /usr/local/bin/igv
+    ignore_errors: yes
+
+  - name: Create IGV Desktop file
+    file:
+      path: /home/training/Desktop/igv.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in IGV Desktop file
+    blockinfile:
+      path: /home/training/Desktop/igv.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=IGV 2.8.12
+        Icon=/usr/local/IGV_Linux_2.8.12/IGV_64.png
+        Exec=/usr/local/IGV_Linux_2.8.12/igv.sh

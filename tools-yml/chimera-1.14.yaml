@@ -1,0 +1,27 @@
+  - name: Copy Chimera bin file
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/chimera-1.14-linux_x86_64.bin
+      dest: /usr/local/chimera.bin
+      mode: 0777
+
+  - name: Install Chimera
+    shell: echo /usr/local/chimera | /usr/local/chimera.bin
+
+  - name: Create Chimera Symlink
+    file:
+      src: /usr/local/chimera/bin/chimera
+      dest: /usr/local/bin/chimera
+      state: link
+    ignore_errors: yes
+
+  - name: Install Chimera Desktop icon
+    shell: /usr/local/chimera/bin/xdg-setup install
+    become: yes
+    become_user: training
+    ignore_errors: yes
+
+  - name: Delete Chimera installer
+    file:
+      path: /usr/local/chimera.bin
+      state: absent
+    ignore_errors: yes

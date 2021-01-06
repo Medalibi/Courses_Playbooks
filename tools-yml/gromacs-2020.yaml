@@ -1,0 +1,21 @@
+  - name: install Gromacs deps
+    shell: apt install -y doxygen libnl-utils graphviz fftw-dev fftw-docs fftw2 libfftw3-3 libfftw3-bin libfftw3-dev libfftw3-doc libfftw3-long3 libfftw3-quad3 sfftw-dev sfftw2 libopenmpi-dev
+
+  - name: Download and extract Gromacs 2020.4 archive
+    unarchive:
+      src: "ftp://ftp.gromacs.org/pub/gromacs/gromacs-2020.4.tar.gz"
+      dest: /home/training/
+      remote_src: yes
+      mode: '0777'
+      owner: training
+
+  - name: Compile Gromacs 2020.4
+    shell: |
+      mkdir build
+      cd ./build
+      cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON -DCMAKE_INSTALL_PREFIX=/home/training/gromacs-2020.4
+      make -j 6
+      make check -j 6
+      sudo make install
+    args:
+      chdir: /home/training/gromacs-2020.4

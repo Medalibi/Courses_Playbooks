@@ -1,0 +1,59 @@
+  - name: Download Anaconda3
+    get_url:
+      url: "https://repo.anaconda.com/archive/Anaconda3-2020.07-Linux-x86_64.sh"
+      dest: /usr/local/Anaconda3.sh
+      mode: '0777'
+
+  - name: Install anaconda3 requirements
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+        - libgl1-mesa-glx
+        - libegl1-mesa
+        - libxrandr2
+        - libxrandr2
+        - libxss1
+        - libxcursor1
+        - libxcomposite1
+        - libasound2
+        - libxi6
+        - libxtst6
+      update_cache: yes
+
+  - name: Install Pip requirements
+    shell: pip3 install -U Requests pycosat PyYaml Snakemake
+
+  - name: Install Anaconda3
+    shell: /usr/local/Anaconda3.sh -b
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Create Conda Symlink
+    file:
+      src: /home/training/anaconda3/bin/conda
+      dest: /usr/local/bin/conda
+      state: link
+    ignore_errors: yes
+
+  - name: Update Anaconda3
+    shell: |
+      source /home/training/anaconda3/bin/activate
+      conda init
+      conda update conda
+      conda config --set auto_activate_base true
+
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Delete Conda installer
+    file:
+      path: /usr/local/Anaconda3.sh
+      state: absent
+    ignore_errors: yes

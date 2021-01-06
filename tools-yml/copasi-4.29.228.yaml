@@ -1,0 +1,39 @@
+  - name: Download and extract COPASI 4.29 archive
+    unarchive:
+      src: "https://github.com/copasi/COPASI/releases/download/Build-228/COPASI-4.29.228-Linux-64bit.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create CopasiSE symlink
+    file:
+      src: /usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiSE
+      dest: /usr/local/bin/CopasiSE
+      state: link
+    ignore_errors: yes
+
+  - name: Create CopasiUI symlink
+    file:
+      src: /usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiUI
+      dest: /usr/local/bin/CopasiUI
+      state: link
+    ignore_errors: yes
+
+  - name: Create Copasi Desktop file
+    file:
+      path: /home/training/Desktop/Copasi.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Copaci Desktop file
+    blockinfile:
+      path: /home/training/Desktop/Copasi.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=COPASI 4.29
+        Icon=/usr/local/COPASI-4.29.228-Linux-64bit/share/copasi/icons/Copasi48-Alpha.xpm
+        Exec=/usr/local/COPASI-4.29.228-Linux-64bit/bin/CopasiUI

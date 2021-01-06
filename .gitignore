@@ -139,3 +139,5 @@ dmypy.json
 **.sam
 **.fa
 **.tgz
+**.zip
+**.tar

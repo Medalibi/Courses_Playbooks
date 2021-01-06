@@ -1,0 +1,32 @@
+  - name: Download Cytoscape
+    get_url:
+      url: "https://github.com/cytoscape/cytoscape/releases/download/3.8.2/Cytoscape_3_8_2_unix.sh"
+      dest: /usr/local/Cytoscape_3_8_2_unix.sh
+      mode: '0777'
+
+  - name: Install Cytoscape
+    shell: ./Cytoscape_3_8_2_unix.sh -q
+    args:
+      chdir: /usr/local/
+
+  - name: Create Cytoscape Symlink
+    file:
+      src: /usr/local/Cytoscape_v3.8.2/cytoscape.sh
+      dest: /usr/local/bin/cytoscape
+      state: link
+    ignore_errors: yes
+
+  - name: Delete Cytoscape installer
+    file:
+      path: /usr/local/Cytoscape_3_8_2_unix.sh
+      state: absent
+    ignore_errors: yes
+
+  - name: Copy Cytoscape Desktop file
+    copy:
+      src: /usr/local/Cytoscape_v3.8.2/Cytoscape.desktop
+      dest: /home/training/Desktop/Cytoscape.desktop
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'

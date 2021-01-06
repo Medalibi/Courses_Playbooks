@@ -1,0 +1,10 @@
+  - name: Extract Hisat2 archive
+    unarchive:
+      src: "https://cloud.biohpc.swmed.edu/index.php/s/oTtGWbWjaxsQ2Ho/download"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create symlink for all the tools within Hisat
+    shell: ln -s /usr/local/hisat2-2.2.1/hisat* /usr/local/bin/
+    ignore_errors: yes

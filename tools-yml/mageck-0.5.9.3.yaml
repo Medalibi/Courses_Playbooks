@@ -1,0 +1,11 @@
+  - name: Download and extract Mageck archive
+    unarchive:
+      src: "https://downloads.sourceforge.net/project/mageck/0.5/mageck-0.5.9.3.tar.gz?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fmageck%2Ffiles%2Flatest%2Fdownload&ts=1592928554"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install Mageck
+    shell: python3 setup.py install
+    args:
+      chdir: /usr/local/mageck-0.5.9.3/

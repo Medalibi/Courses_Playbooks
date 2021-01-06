@@ -1,0 +1,34 @@
+  - name: Download STRONG
+    git:
+      repo: 'https://github.com/chrisquince/STRONG.git'
+      dest: /usr/local/STRONG
+      recursive: yes
+
+  - name: Compile Spades and CoG
+    shell: |
+      ./build_cog_tools.sh
+      conda install -c conda-forge mamba -y
+    args:
+      chdir: /usr/local/STRONG/SPAdes/assembler/
+    ignore_errors: yes
+
+  - name: Resolve Strong envirenment
+    shell: |
+      mamba env create -f conda_env.yaml
+      ln -s /home/training/miniconda3/envs/STRONG/lib/R/modules/lapack.so /home/training/miniconda3/envs/STRONG/lib/R/modules/libRlapack.so
+      conda activate STRONG
+    args:
+      chdir: /usr/local/STRONG
+    ignore_errors: yes
+
+  - name: Install BayesPaths
+    shell: python3 ./setup.py install
+    args:
+      chdir: /usr/local/STRONG/BayesPaths
+    ignore_errors: yes
+
+  - name: Install DESMAN
+    shell: python3 ./setup.py install
+    args:
+      chdir: /usr/local/STRONG/DESMAN
+    ignore_errors: yes

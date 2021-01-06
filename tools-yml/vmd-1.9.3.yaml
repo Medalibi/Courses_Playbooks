@@ -1,0 +1,33 @@
+  - name: Copy VMD archive
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/vmd-1.9.3.bin.LINUXAMD64-CUDA8-OptiX4-OSPRay111p1.opengl.tar.gz
+      dest: /usr/local/vmd.tar.gz
+      mode: 0777
+
+  - name: Extract VMD archive
+    unarchive:
+      src: /usr/local/vmd.tar.gz
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile VMD
+    shell: |
+      ./configure LINUXAMD64
+      cd ./src
+      make
+      make install
+    args:
+      chdir: /usr/local/vmd-1.9.3
+
+  - name: Fix VMD SSE4.1. requirements
+    shell: |
+      echo "export VMDNOOSPRAY=1" >> /home/training/.profile
+      echo "export VMDNOOSPRAY=1" >> /home/training/.bashrc
+      ##echo "export VMDNOOSPRAY=1" >> /etc/bash.bashrc
+
+  - name: Delete VMD archive
+    file:
+      path: /usr/local/vmd.tar.gz
+      state: absent
+    ignore_errors: yes

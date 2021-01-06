@@ -1,0 +1,51 @@
+  - name: install Gromacs 2019 deps
+    shell: apt install -y doxygen libnl-utils graphviz fftw-dev fftw-docs fftw2 libfftw3-3 libfftw3-bin libfftw3-dev libfftw3-doc libfftw3-long3 libfftw3-quad3 sfftw-dev sfftw2 libopenmpi-dev
+
+  - name: Download and extract Gromacs 2019 archive
+    unarchive:
+      src: "ftp://ftp.gromacs.org/pub/gromacs/gromacs-2019.tar.gz"
+      dest: /home/training/
+      remote_src: yes
+      mode: '0777'
+      owner: training
+
+  - name: Download and extract Plumed 2.6.2 archive
+    unarchive:
+      src: "https://github.com/plumed/plumed2/releases/download/v2.6.2/plumed-2.6.2.tgz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile Plumed with MPI
+    shell: |
+      export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+      ##echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /etc/bash.bashrc
+      ##echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /home/training/.bashrc
+      ./configure --prefix=/usr/local/ CXX=mpic++ --enable-mpi
+      make -j 6
+      make check -j 6
+      make doc -j 6
+      make test -j 6
+      umask 022
+      make install
+      sudo ldconfig
+    args:
+      chdir: /usr/local/plumed-2.6.2/
+
+  - name: Patch Gromacs 2019 with Plumed
+    shell: |
+      export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+      plumed patch -p -e gromacs-2019.6
+    args:
+      chdir: /home/training/gromacs-2019/
+
+  - name: Compile Gromacs 2019
+    shell: |
+      mkdir build
+      cd ./build
+      cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON -DGMX_MPI=on -DCMAKE_INSTALL_PREFIX=/home/training/gromacs-2019
+      make -j 6
+      make check -j 6
+      sudo make install
+    args:
+      chdir: /home/training/gromacs-2019

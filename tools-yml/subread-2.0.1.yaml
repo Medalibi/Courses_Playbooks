@@ -1,0 +1,30 @@
+
+  - name: Upload Subread
+    copy:
+      src: /Users/alibi/Documents/Courses_Playbooks/subread-2.0.1-Linux-x86_64.tar.gz
+      dest: /usr/local/subread-2.0.1-Linux-x86_64.tar.gz
+
+      mode: 0777
+
+  - name: Extract Subread
+    unarchive:
+      src: /usr/local/subread-2.0.1-Linux-x86_64.tar.gz
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Export Subread bins
+    lineinfile:
+      path: "{{ item }}"
+      line: export PATH="$PATH:/usr/local/subread-2.0.1-Linux-x86_64/bin/"
+      create: yes
+    with_items:
+      - /etc/bash/bashrc
+      - /home/training/.bashrc
+      - /home/training/.profile
+    ignore_errors: yes
+
+  - name: Remove CellRasnger archive
+    file:
+      path: /usr/local/subread-2.0.1-Linux-x86_64.tar.gz
+      state: absent

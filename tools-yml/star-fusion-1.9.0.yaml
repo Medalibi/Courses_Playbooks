@@ -1,0 +1,37 @@
+  - name: Download STAR-Fusion git repo
+    git:
+      repo: https://github.com/STAR-Fusion/STAR-Fusion.git
+      dest: /usr/local/STAR-Fusion.v1.9.0
+      recursive: yes
+    ignore_errors: yes
+
+  - name: Change folder permission for Star-Fusion
+    file:
+      path: /usr/local/STAR-Fusion.v1.9.0
+      mode: '0777'
+
+  - name: Install Perl packages
+    cpanm:
+      name: "{{ item }}"
+    with_items:
+      - "DB_File"
+      - "URI::Escape"
+      - "Set::IntervalTree"
+      - "Carp::Assert"
+      - "JSON::XS"
+      - "PerlIO::gzip"
+
+  - name: Compile STAR-Fusion
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/STAR-Fusion.v1.9.0
+    ignore_errors: yes
+
+  - name: Create STAR-Fusion Symlink
+    file:
+      src: /usr/local/STAR-Fusion.v1.9.0/STAR-Fusion
+      dest: /usr/local/bin/STAR-Fusion
+      state: link
+    ignore_errors: yes

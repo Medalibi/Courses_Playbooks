@@ -1,0 +1,12 @@
+  - name: Install apt reqs for nextflow
+    apt:
+      name: curl
+      update_cache: yes
+
+  - name: Download Nextflow
+    shell: curl -fsSL get.nextflow.io | bash
+    args:
+      chdir: /usr/local/bin/
+
+  - name: Allow execution rights for nexrtflow
+    shell: chmod +x /usr/local/bin/nextflow

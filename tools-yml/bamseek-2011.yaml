@@ -1,0 +1,51 @@
+  - name: Create Bamseek dir
+    file:
+      path: /usr/local/bamseek
+      state: directory
+      mode: '0777'
+    ignore_errors: yes
+
+  - name: Download bamseek
+    get_url:
+      url: "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/bamseek/BAMseek2011July24.jar"
+      dest: /usr/local/bamseek/BAMseek.jar
+      mode: '0777'
+
+  - name: Create Bamseek bash executable
+    file:
+      path: /usr/local/bamseek/bamseek
+      state: touch
+      mode: '0777'
+
+  - name: Fill in Bamseek bash executable
+    blockinfile:
+      path: /usr/local/bamseek/bamseek
+      block: |
+        #!/bin/bash
+        java -jar /usr/local/bamseek/BAMseek.jar $@
+
+  - name: Create Bamseek Symlink
+    file:
+      src: /usr/local/bamseek/bamseek
+      dest: /usr/local/bin/bamseek
+      state: link
+    ignore_errors: yes
+
+  - name: Create Bamseek Desktop file
+    file:
+      path: /home/training/Desktop/Bamseek.desktop
+      state: touch
+      owner: training
+      group: training
+      mode: '0777'
+
+  - name: Fill in Bamseek Desktop file
+    blockinfile:
+      path: /home/training/Desktop/Bamseek.desktop
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Terminal=false
+        Name=BAMseek 2011July24
+        Icon=/usr/share/icons/humanity/apps/48/application-default-icon.svg
+        Exec=/usr/local/bamseek/bamseek

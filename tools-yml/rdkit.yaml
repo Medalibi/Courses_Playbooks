@@ -1,0 +1,13 @@
+  - name: Install rdkit
+    shell: |
+      source /home/training/anaconda3/bin/activate
+      conda init
+      conda create -y --name myenv
+      conda activate myenv
+      conda install -y -c conda-forge rdkit
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    async: 120
+    poll: 0
