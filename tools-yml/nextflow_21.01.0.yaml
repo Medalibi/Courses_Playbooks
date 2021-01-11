@@ -1,0 +1,16 @@
+  - name: Delete older version of nextflow
+    file:
+      path: /usr/local/bin/nextflow
+      state: absent
+    ignore_errors: yes
+
+  - name: Install apt reqs for nextflow
+    apt:
+      name: graphviz
+      update_cache: yes
+
+  - name: Download nextflow into bin
+    get_url:
+      url: "https://github.com/nextflow-io/nextflow/releases/download/v21.01.0-edge/nextflow-21.01.0-edge-all"
+      dest: /usr/local/bin/nextflow
+      mode: '0777'

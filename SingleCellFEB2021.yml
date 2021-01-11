@@ -237,3 +237,54 @@
       rm -r ./organoid/
     args:
       chdir: /home/training/Group_projects/Human_Fetal_Organoids/
+
+  - name: Create 10xDropSeq_E-MTAB-6701 folders
+    shell: mkdir -p ./10xDropSeq_E-MTAB-6701
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Download 10xDropSeq_E-MTAB-6701 files
+    shell: wget -c "https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6701/{{ item }}.fq.gz"
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/10xDropSeq_E-MTAB-6701/
+    with_items:
+      - FCA7167219_I1
+      - FCA7167219_R1
+      - FCA7167219_R2
+      - FCA7167222_I1
+      - FCA7167222_R1
+      - FCA7167222_R2
+      - FCA7167221_I1
+      - FCA7167221_R1
+      - FCA7167221_R2
+
+  - name: Create SmartSeq2 folders
+    shell: mkdir -p ./SmartSeq2_E-MTAB-6678
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Download SmartSeq2 files
+    shell: wget --tries=4 --waitretry=1 --read-timeout=20 --timeout=15 -c "{{ item }}"
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/SmartSeq2_E-MTAB-6678/
+    with_items:
+      - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2455946/24087_7_73.1.fastq.gz
+      - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2455946/24087_7_73.2.fastq.gz
+      - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2456649/23728_8_119.1.fastq.gz
+      - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2456649/23728_8_119.2.fastq.gz
+      - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2456723/24087_5_146.1.fastq.gz
+      - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2456723/24087_5_146.2.fastq.gz
+
+  - include: tools-yml/nextflow_21.01.0.yaml
+  - include: tools-yml/docker.yaml
+  - include: tools-yml/seqtk-1.3.yaml

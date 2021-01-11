@@ -1,6 +1,12 @@
+  - name: Delete older version of nextflow
+    file:
+      path: /usr/local/bin/nextflow
+      state: absent
+    ignore_errors: yes
+
   - name: Install apt reqs for nextflow
     apt:
-      name: curl
+      name: graphviz
       update_cache: yes
 
   - name: Download Nextflow
@@ -9,4 +15,4 @@
       chdir: /usr/local/bin/
 
   - name: Allow execution rights for nexrtflow
-    shell: chmod +x /usr/local/bin/nextflow
+    shell: chmod 777 /usr/local/bin/nextflow

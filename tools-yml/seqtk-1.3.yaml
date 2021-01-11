@@ -1,0 +1,14 @@
+  - name: Download and extract seqtk archive
+    unarchive:
+      src: "https://github.com/lh3/seqtk/archive/v1.3.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Compile seqtk
+    shell: |
+      make
+      make install
+    args:
+      chdir: /usr/local/seqtk-1.3
+    ignore_errors: yes
