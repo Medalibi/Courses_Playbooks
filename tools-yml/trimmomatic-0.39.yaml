@@ -1,0 +1,30 @@
+
+  - name: Download and extract Trimmomatic archive
+    unarchive:
+      src: "http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.39.zip"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Create Trimmomatic bash file
+    file:
+      path: /usr/local/Trimmomatic-0.39/trimmomatic
+      state: touch
+      mode: '0777'
+
+  - name: Fill in Trimmomatic bash file
+    blockinfile:
+      path: /usr/local/Trimmomatic-0.39/trimmomatic
+      block: |
+        #!/bin/bash
+        java -jar /usr/local/Trimmomatic-0.39/trimmomatic-0.39.jar $@
+
+  - name: Creat Trimmomatic Symlink
+    file:
+      src: '{{ item.src }}'
+      dest: '{{ item.dest }}'
+      state: link
+    with_items:
+      - { src: "/usr/local/Trimmomatic-0.39/trimmomatic-0.39.jar", dest: "/usr/local/bin/trimmomatic-0.39.jar" }
+      - { src: "/usr/local/Trimmomatic-0.39/trimmomatic", dest: "/usr/local/bin/trimmomatic" }
+    ignore_errors: yes

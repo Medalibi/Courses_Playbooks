@@ -1,0 +1,26 @@
+- name: Download Picard
+  get_url:
+    url: "https://github.com/broadinstitute/picard/releases/download/2.24.0/picard.jar"
+    dest: /usr/local/bin
+    mode: '0777'
+
+- name: Install Ubuntu Repo based tools
+  apt:
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - default-jre
+    - default-jdk
+
+- name: Create Picard bash executable
+  file:
+    path: /usr/local/bin/picard
+    state: touch
+    mode: '0777'
+
+- name: Fill in Picard bash executable
+  blockinfile:
+    path: /usr/local/bin/picard
+    block: |
+      #!/bin/bash
+      java -jar /usr/local/bin/picard.jar $@

@@ -1,0 +1,4 @@
+- name: Install BWA from Ubuntu Repo
+  apt:
+    name: bwa
+    update_cache: yes

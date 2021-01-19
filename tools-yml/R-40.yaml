@@ -49,6 +49,11 @@
         - liblzma-dev
         - curl
         - libcurl4-openssl-dev
+        - build-essential
+        - libcurl4-gnutls-dev
+        - libssl-dev
+        - libgit2-dev
+        - pkg-config
       update_cache: yes
 
   - name: Create R pkg installer file
@@ -64,7 +69,9 @@
         if (!requireNamespace("BiocManager"))
           install.packages("BiocManager")
         BiocManager::install(update = TRUE, ask = FALSE)
-        BiocManager::install(c("ggplot2"), ask = FALSE)
+        BiocManager::install(c("devtools"), ask = FALSE)
+        library(devtools)
+        install_github("immunogenomics/harmony")
 
   - name: Install R pkgs
     shell: Rscript /usr/local/pkg_install.R

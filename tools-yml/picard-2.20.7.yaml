@@ -1,0 +1,18 @@
+- name: Download Picard
+  get_url:
+    url: "https://github.com/broadinstitute/picard/releases/download/2.20.7/picard.jar"
+    dest: /usr/local/bin
+    mode: '0777'
+
+- name: Create Picard bash executable
+  file:
+    path: /usr/local/bin/picard
+    state: touch
+    mode: '0777'
+
+- name: Fill in Picard bash executable
+  blockinfile:
+    path: /usr/local/bin/picard
+    block: |
+      #!/bin/bash
+      java -jar /usr/local/bin/picard.jar $@

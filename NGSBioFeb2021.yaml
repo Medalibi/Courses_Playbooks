@@ -1,0 +1,75 @@
+---
+- name: NGS Bioinformatics Feb 2021 (Virtual) build playbook on 19-01-2021
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - expect
+      - axel
+      - libcairo2-dev
+      - parallel
+
+  - name: Install Python Pip
+    apt:
+      name:
+        - python3-pip
+        - python3-dev
+
+  - name: Install Jupyter etc
+    shell: pip3 install -U env jupyter pandas matplotlib requests solrq numpy scipy gdown
+
+# Installing tools ################################################
+  - include: tools-yml/docker.yaml
+  - include: tools-yml/ensembl-vep.yaml
+  - include: tools-yml/fastqc-0.11.9.yaml
+  - include: tools-yml/trimmomatic-0.39.yaml
+  - include: tools-yml/igv-2.8.13.yaml
+  - include: tools-yml/tablet-1.20.12.24.yaml
+  - include: tools-yml/bwa.yaml
+  - include: tools-yml/samtools-1.11.yaml
+  - include: tools-yml/picard-2.24.0.yaml
+  - include: tools-yml/gatk-4.1.9.0.yaml
+  - include: tools-yml/vcftools-0.1.16.yaml
+  - include: tools-yml/R-40.yaml
+  - include: tools-yml/qualimap_2.2.1.yaml
+  - include: tools-yml/freebayes-1.3.1.yaml

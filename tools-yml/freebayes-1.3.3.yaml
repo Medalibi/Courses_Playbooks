@@ -1,0 +1,6 @@
+  - name: Download and extract Freebayes archive
+    unarchive:
+      src: "https://github.com/freebayes/freebayes/archive/v1.3.3.tar.gz"
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'

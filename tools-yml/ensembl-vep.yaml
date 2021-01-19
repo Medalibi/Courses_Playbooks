@@ -1,0 +1,4 @@
+- name: Pull Ensembl-VEP image
+  community.general.docker_image:
+    name: ensemblorg/ensembl-vep
+    source: pull

@@ -30,3 +30,8 @@
       name: setup
       group: docker
     ignore_errors: yes
+
+  - name: Reboot the VMs to apply Docker changes
+    reboot:
+      msg: System reboot inititated by Ansible
+      reboot_timeout: 120

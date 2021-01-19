@@ -1,0 +1,62 @@
+- name: Download and extract qualimap archive
+  unarchive:
+    src: "https://bitbucket.org/kokonech/qualimap/downloads/qualimap_v2.2.1.zip"
+    dest: /usr/local/
+    remote_src: yes
+    mode: '0777'
+
+- name: Creat qualimap Symlink
+  file:
+    src: /usr/local/qualimap_v2.2.1/qualimap
+    dest: /usr/local/bin/qualimap
+    state: link
+  ignore_errors: yes
+
+- name: Create qualimap Desktop file
+  file:
+    path: /home/training/Desktop/qualimap.desktop
+    state: touch
+    owner: training
+    group: training
+    mode: '0777'
+
+- name: Fill in qualimap Desktop file
+  blockinfile:
+    path: /home/training/Desktop/qualimap.desktop
+    block: |
+      [Desktop Entry]
+      Type=Application
+      Terminal=false
+      Name=Qualimap 2.2.1
+      Icon=/usr/share/icons/Humanity/apps/64/application-default-icon.svg
+      Exec=/usr/local/qualimap_v2.2.1/qualimap
+
+- name: Install R cran and dependencies
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - libxml2-dev
+    - libxml2
+    - liblzma-dev
+    - curl
+    - libcurl4-openssl-dev
+
+- name: Create R pkg installer file
+  file:
+    path: /usr/local/pkg_install.R
+    state: touch
+    mode: '0777'
+
+- name: Fill in R pkg installer file
+  blockinfile:
+    path: /usr/local/pkg_install.R
+    block: |
+      if (!requireNamespace("BiocManager"))
+        install.packages("BiocManager")
+      BiocManager::install(update = TRUE, ask = FALSE)
+      BiocManager::install(c("optparse", "NOISeq", "XML", "Rsamtools", "Repitools", "rtracklayer"), ask = FALSE)
+
+- name: Install R pkgs
+  shell: Rscript /usr/local/pkg_install.R

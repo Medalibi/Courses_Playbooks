@@ -46,6 +46,7 @@
       - libssl-dev
       - expect
       - axel
+      - libcairo2-dev
 
   - name: Install Python Pip
     apt:
@@ -54,7 +55,7 @@
         - python3-dev
 
   - name: Install Jupyter etc
-    shell: pip3 install -U jupyter pandas matplotlib requests solrq numpy scipy gdown
+    shell: pip3 install -U env jupyter pandas matplotlib requests solrq numpy scipy gdown
 
 # Installing tools ################################################
 
@@ -284,6 +285,15 @@
       - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2456649/23728_8_119.2.fastq.gz
       - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2456723/24087_5_146.1.fastq.gz
       - ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR245/ERR2456723/24087_5_146.2.fastq.gz
+
+  - name: Download and extract Human Thymus - Veronika file 5
+    unarchive:
+      src: "https://www.bioinformatics.babraham.ac.uk/training/10XRNASeq/10XCourse%20Data.zip"
+      dest: /home/training/
+      remote_src: yes
+      owner: training
+      group: training
+      mode: '0777'
 
   - include: tools-yml/nextflow_21.01.0.yaml
   - include: tools-yml/docker.yaml
