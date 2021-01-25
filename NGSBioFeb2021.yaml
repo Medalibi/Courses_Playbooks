@@ -1,9 +1,11 @@
 ---
 - name: NGS Bioinformatics Feb 2021 (Virtual) build playbook on 19-01-2021
   hosts: coursevm
-  gather_facts: no
+  gather_facts: yes
   become: yes
   become_method: sudo
+  roles:
+  - role: marvel-nccr.slurm
   tasks:
   - name: Install Ubuntu Repo based tools
     apt:

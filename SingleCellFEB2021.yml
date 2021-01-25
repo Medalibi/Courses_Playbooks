@@ -47,6 +47,7 @@
       - expect
       - axel
       - libcairo2-dev
+      - libhdf5-dev
 
   - name: Install Python Pip
     apt:
@@ -85,6 +86,10 @@
         BiocManager::install(c("ggplot2", "grid", "parallel", "stats4", "stats", "graphics", "grDevices", "utils,datasets", "methods", "base"), ask = FALSE)
         BiocManager::install(c("ComplexHeatmap", "glmnet", "SoupX", "harmony", "Rcpp", "patchwork", "DropletUtils", "SingleCellExperiment", "SummarizedExperiment", "DelayedArray"), ask = FALSE)
         BiocManager::install(c("BiocParallel", "matrixStats", "Biobase", "GenomicRanges", "GenomeInfoDb", "IRanges", "S4Vectors", "BiocGenerics", "gdata", "Matrix", "dplyr2" , "Seurat"), ask = FALSE)
+        if (!requireNamespace("remotes", quietly = TRUE)) {
+          install.packages("remotes")
+        }
+        remotes::install_github("mojaveazure/seurat-disk")
 
   - name: Install R pkgs
     shell: Rscript /usr/local/pkg_install.R

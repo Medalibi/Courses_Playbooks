@@ -1,0 +1,78 @@
+- name: Install SLURM system packages
+  apt:
+    state: present
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - munge
+    - python-pip
+    - slurm-llnl
+    - slurm-drmaa-dev
+    - python-psutil
+    - mariadb-server
+
+- name: start and enable munge on slurmctlds
+  service: name=munge state=started enabled=yes
+
+- name: Create SQL script installer file
+  file:
+    path: /usr/local/script.sql
+    state: touch
+    mode: '0777'
+
+- name: Fill in SQL script installer file
+  blockinfile:
+    path: /usr/local/script.sql
+    block: |
+      create database slurm_acct_db;
+      create user 'slurm'@'localhost';
+      set password for 'slurm'@'localhost' = password('slurmdbpass');
+      grant usage on *.* to 'slurm'@'localhost';
+      grant all privileges on slurm_acct_db.* to 'slurm'@'localhost';
+      flush privileges;
+      exit
+
+- name: Run the SQl code within
+  shell: sudo mysql -u root < /usr/local/script.sql
+
+- name: Create munge.service configuration file
+  template: src=munge.service.j2 dest=/etc/systemd/system/munge.service
+
+- name: Add custom Slurm PPA
+  apt_repository:
+    repo: ppa:natefoo/slurm-drmaa
+    state: present
+    update_cache: yes
+
+- name: Install Slurm system packages
+  apt: pkg={{ item }} state=present
+  with_items:
+    - slurm-wlm
+    - slurm-drmaa-dev
+    - python-psutil
+    - slurm-wlm-torque
+    - slurmd
+    - slurm-client
+    - slurmctld
+    - slurm-wlm-doc
+
+- name: Create Munge Key
+  command: /usr/sbin/create-munge-key creates=/etc/munge/munge.key
+
+- name: Setup Munge permissions and folder
+  file: path={{ item }} state=directory owner=root group=root recurse=yes
+  with_items:
+    - /var/run/munge
+    - /var/lib/munge
+    - /var/log/munge
+    - /var/run/munge
+    - /etc/munge
+
+- name: Setup tmp area for Slurm
+  file: path=/tmp/slurm state=directory owner=training group=training
+
+- name: Create slurm configuration file
+  template: src=configure_slurm.py.j2 dest=/usr/sbin/configure_slurm.py
+
+- name: start and enable slurmctld
+service: name={{ slurmctld_service }} state=started enabled=yes
