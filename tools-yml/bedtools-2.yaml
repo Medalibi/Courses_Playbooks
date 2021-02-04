@@ -1,8 +1,14 @@
-  - name: Download and extract Bedtools2 archive
+  - name: Download Bedtools2
+    get_url:
+      url: "https://github.com/arq5x/bedtools2/releases/download/v2.29.2/bedtools-2.29.2.tar.gz"
+      dest: /media/penelopeprime/.tools/bedtools-2.29.2.tar.gz
+      mode: '0777'
+    run_once: true
+
+  - name: Extract Bedtools2 archive
     unarchive:
-      src: "https://github.com/arq5x/bedtools2/releases/download/v2.29.2/bedtools-2.29.2.tar.gz"
+      src: /media/penelopeprime/.tools/bedtools-2.29.2.tar.gz
       dest: /usr/local/
-      remote_src: yes
       mode: '0777'
 
   - name: Compile Bedtools2

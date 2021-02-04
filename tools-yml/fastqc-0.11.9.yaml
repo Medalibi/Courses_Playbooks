@@ -1,8 +1,14 @@
-  - name: Download and extract FastQC archive
+  - name: Download FastQC
+    get_url:
+      url: "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.9.zip"
+      dest: /media/penelopeprime/.tools/fastqc_v0.11.9.zip
+      mode: '0777'
+    run_once: true
+
+  - name: Extract FastQC archive
     unarchive:
-      src: "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.9.zip"
+      src: /media/penelopeprime/.tools/fastqc_v0.11.9.zip
       dest: /usr/local/
-      remote_src: yes
       mode: '0777'
 
   - name: Install Ubuntu Repo based tools

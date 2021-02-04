@@ -1,10 +1,18 @@
   - name: Download Anaconda3
     get_url:
-      url: "https://repo.anaconda.com/archive/Anaconda3-2020.07-Linux-x86_64.sh"
-      dest: /usr/local/Anaconda3.sh
+      url: "https://repo.anaconda.com/archive/Anaconda3-2020.11-Linux-x86_64.sh"
+      dest: /media/penelopeprime/.tools/Anaconda3.sh
+      mode: '0777'
+    run_once: true
+
+  - name: Copy Anaconda3
+    copy:
+      src: /media/penelopeprime/.tools/Anaconda3.sh
+      dest: /usr/local/
+      remote_src: yes
       mode: '0777'
 
-  - name: Install anaconda3 requirements
+  - name: Install Anaconda3 requirements
     apt:
       name:
         - python3-pip
@@ -19,6 +27,8 @@
         - libasound2
         - libxi6
         - libxtst6
+        - cython
+        - cython3
       update_cache: yes
 
   - name: Install Pip requirements
@@ -45,7 +55,6 @@
       conda init
       conda update conda
       conda config --set auto_activate_base true
-
     become: yes
     become_user: training
     args:

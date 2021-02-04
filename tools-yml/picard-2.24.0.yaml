@@ -1,7 +1,15 @@
 - name: Download Picard
   get_url:
     url: "https://github.com/broadinstitute/picard/releases/download/2.24.0/picard.jar"
+    dest: /media/penelopeprime/.tools/picard.jar
+    mode: '0777'
+  run_once: true
+
+- name: Copy Picard
+  copy:
+    src: /media/penelopeprime/.tools/picard.jar
     dest: /usr/local/bin
+    remote_src: yes
     mode: '0777'
 
 - name: Install Ubuntu Repo based tools

@@ -1,8 +1,14 @@
-  - name: Download and extract GATK archive
+  - name: Download GATK
+    get_url:
+      url: "https://github.com/broadinstitute/gatk/releases/download/4.1.9.0/gatk-4.1.9.0.zip"
+      dest: /media/penelopeprime/.tools/gatk-4.1.9.0.zip
+      mode: '0777'
+    run_once: true
+
+  - name: Extract GATK archive
     unarchive:
-      src: "https://github.com/broadinstitute/gatk/releases/download/4.1.9.0/gatk-4.1.9.0.zip"
+      src: /media/penelopeprime/.tools/gatk-4.1.9.0.zip
       dest: /usr/local/
-      remote_src: yes
       mode: '0777'
 
   - name: Creat GATK Symlink

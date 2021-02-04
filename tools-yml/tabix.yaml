@@ -1,0 +1,18 @@
+  - name: Download the github repo for tabix
+    git:
+      repo: https://github.com/samtools/tabix.git
+      dest: /usr/local/tabix
+
+  - name: Compile tabix
+    shell: |
+      make
+    args:
+      chdir: /usr/local/tabix
+    ignore_errors: yes
+
+  - name: Create tabix Symlink
+    file:
+      src: /usr/local/tabix/tabix
+      dest: /usr/local/bin/tabix
+      state: link
+    ignore_errors: yes

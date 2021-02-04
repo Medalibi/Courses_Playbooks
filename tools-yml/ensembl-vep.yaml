@@ -1,4 +1,38 @@
-- name: Pull Ensembl-VEP image
-  community.general.docker_image:
-    name: ensemblorg/ensembl-vep
-    source: pull
+  - name: Install ensembl-vep requirements
+    apt:
+      name:
+        - git
+        - libmysqlclient-dev
+        - cpanminus
+
+  - name: Install Cpan system requirements
+    shell: |
+      cpanm install DBI
+      cpanm install Archive::Zip
+      cpanm install DBD::mysql
+
+  - name: Double check Cpan requirements for user
+    shell: |
+      cpanm install DBI
+      cpanm install Archive::Zip
+      cpanm install DBD::mysql
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+  - name: Download the github repo for ensembl-vep
+    git:
+      repo: https://github.com/Ensembl/ensembl-vep.git
+      dest: /home/training/ensembl-vep
+
+  - name: Install ensembl-vep
+    shell: |
+      perl INSTALL.pl
+      cpanm install DBI
+      perl INSTALL.pl
+      export PERL5LIB=~/perl5
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/ensembl-vep

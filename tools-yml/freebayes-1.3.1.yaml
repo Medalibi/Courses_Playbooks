@@ -1,5 +1,12 @@
-- name: Download Freebayes into the bin
-  get_url:
-    url: "https://github.com/ekg/freebayes/releases/download/v1.3.1/freebayes-v1.3.1"
-    dest: /usr/local/bin/freebayes
-    mode: '0777'
+  - name: Download Freebayes
+    get_url:
+      url: "https://github.com/ekg/freebayes/releases/download/v1.3.1/freebayes-v1.3.1"
+      dest: /media/penelopeprime/.tools/freebayes
+      mode: '0777'
+    run_once: true
+
+  - name: Download Freebayes into the bin
+    get_url:
+      url: /media/penelopeprime/.tools/freebayes
+      dest: /usr/local/bin/freebayes
+      mode: '0777'

@@ -1,8 +1,14 @@
-  - name: Download and extract COPASI 4.29 archive
+  - name: Download COPASI 4.29 archive
+    get_url:
+      url: "https://github.com/copasi/COPASI/releases/download/Build-228/COPASI-4.29.228-Linux-64bit.tar.gz"
+      dest: /media/penelopeprime/.tools/COPASI-4.29.228-Linux-64bit.tar.gz
+      mode: '0777'
+    run_once: true
+
+  - name: Extract COPASI 4.29 archive
     unarchive:
-      src: "https://github.com/copasi/COPASI/releases/download/Build-228/COPASI-4.29.228-Linux-64bit.tar.gz"
+      src: /media/penelopeprime/.tools/COPASI-4.29.228-Linux-64bit.tar.gz
       dest: /usr/local/
-      remote_src: yes
       mode: '0777'
 
   - name: Create CopasiSE symlink

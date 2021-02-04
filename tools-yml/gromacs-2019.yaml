@@ -1,5 +1,5 @@
   - name: install Gromacs 2019 deps
-    shell: apt install -y doxygen libnl-utils graphviz fftw-dev fftw-docs fftw2 libfftw3-3 libfftw3-bin libfftw3-dev libfftw3-doc libfftw3-long3 libfftw3-quad3 sfftw-dev sfftw2 libopenmpi-dev
+    shell: sudo apt install -y doxygen libnl-utils graphviz fftw-dev fftw-docs fftw2 libfftw3-3 libfftw3-bin libfftw3-dev libfftw3-doc libfftw3-long3 libfftw3-quad3 sfftw-dev sfftw2 libopenmpi-dev
 
   - name: Download and extract Gromacs 2019 archive
     unarchive:

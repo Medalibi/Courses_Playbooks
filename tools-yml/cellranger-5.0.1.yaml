@@ -1,13 +1,13 @@
   - name: Download CellRanger
     shell: wget -O cellranger-5.0.1.tar.gz "https://cf.10xgenomics.com/releases/cell-exp/cellranger-5.0.1.tar.gz?Expires=1609896224&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9jZi4xMHhnZW5vbWljcy5jb20vcmVsZWFzZXMvY2VsbC1leHAvY2VsbHJhbmdlci01LjAuMS50YXIuZ3oiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE2MDk4OTYyMjR9fX1dfQ__&Signature=SOnnStbb1~xFJGoRkAfR1Ulo0ENEJGfTl6HhvCkYERjBeEqWObHsQ1MPZAWOoUXio-iONmchiaE5jOgrZVupo-i17IbiIEVl4Ccg97mtemkK641nWtOK390rY9rSc7BndUgtzfaTibuRM6GEZgAgaoQCthDWlI4JurT9gjqDcDtk16DNCSCTn6aOQALAG86iCL2fYqeUtTIZoitOxYDMFrktkQ5WS9yxJYh0BY8eQscqJSFpxJYNYrNbneFI6fB9vYd6Q2LaX1UVgDxqMmfh09SvzvRSWtpciXpBZf3f40Fqb5VUND70MOXpcrvYwxB5~VKgHcuikw0vctqfQmKqvA__&Key-Pair-Id=APKAI7S6A5RYOXBWRPDA"
     args:
-      chdir: /usr/local/
+      chdir: /media/penelopeprime/.tools/
+    run_once: true
 
   - name: Extract CellRasnger archive
     unarchive:
-      src: /usr/local/cellranger-5.0.1.tar.gz
+      src: /media/penelopeprime/.tools/cellranger-5.0.1.tar.gz
       dest: /usr/local/
-      remote_src: yes
       mode: '0777'
 
   - name: Export CellRanger bins

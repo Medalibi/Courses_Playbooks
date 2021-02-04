@@ -1,0 +1,67 @@
+  - name: Download Miniconda3
+    get_url:
+      url: "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+      dest: /media/penelopeprime/.tools/Miniconda3-latest-Linux-x86_64.sh
+      mode: '0777'
+    run_once: true
+
+  - name: Copy Miniconda3
+    copy:
+      src: /media/penelopeprime/.tools/Miniconda3-latest-Linux-x86_64.sh
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
+  - name: Install Miniconda3 requirements
+    apt:
+      name:
+        - python3-pip
+        - libgl1-mesa-glx
+        - libegl1-mesa
+        - libxrandr2
+        - libxrandr2
+        - libxss1
+        - libxcursor1
+        - libxcomposite1
+        - libasound2
+        - libxi6
+        - libxtst6
+        - cython
+        - cython3
+      update_cache: yes
+
+  - name: Install Pip requirements
+    shell: pip3 install -U Requests pycosat PyYaml Snakemake
+
+  - name: Install Miniconda3
+    shell: bash /usr/local/Miniconda3-latest-Linux-x86_64.sh -b
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+    ignore_errors: yes
+
+  - name: Create Minionda3 Symlink
+    file:
+      src: /home/training/miniconda/bin/conda
+      dest: /usr/local/bin/conda
+      state: link
+    ignore_errors: yes
+
+- name: Update Minionda3
+  shell: |
+    source /home/training/miniconda/bin/activate
+    conda init
+    conda update conda
+    conda config --set auto_activate_base true
+  become: yes
+  become_user: training
+  args:
+    chdir: /home/training/
+  ignore_errors: yes
+
+- name: Delete Minionda3 installer
+  file:
+    path: /usr/local/Miniconda3-latest-Linux-x86_64.sh
+    state: absent
+  ignore_errors: yes

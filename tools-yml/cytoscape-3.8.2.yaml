@@ -1,8 +1,17 @@
   - name: Download Cytoscape
     get_url:
       url: "https://github.com/cytoscape/cytoscape/releases/download/3.8.2/Cytoscape_3_8_2_unix.sh"
-      dest: /usr/local/Cytoscape_3_8_2_unix.sh
+      dest: /media/penelopeprime/.tools/Cytoscape_3_8_2_unix.sh
       mode: '0777'
+    run_once: true
+
+  - name: Copy Cytoscape
+    copy:
+      src: /media/penelopeprime/.tools/Cytoscape_3_8_2_unix.sh
+      dest: /usr/local/
+      remote_src: yes
+      mode: '0777'
+
 
   - name: Install Cytoscape
     shell: ./Cytoscape_3_8_2_unix.sh -q

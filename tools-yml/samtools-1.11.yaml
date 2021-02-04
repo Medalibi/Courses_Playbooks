@@ -1,13 +1,24 @@
-  - name: Download and extract Samtools archives
+  - name: Download Samtools archives
+    get_url:
+      url: "{{ item.a }}"
+      dest: "/media/penelopeprime/.tools/{{ item.b }}"
+      mode: '0777'
+    run_once: true
+    with_items:
+      - { a: "https://github.com/samtools/htslib/releases/download/1.11/htslib-1.11.tar.bz2", b: htslib-1.11.tar.bz2 }
+      - { a: "https://github.com/samtools/samtools/releases/download/1.11/samtools-1.11.tar.bz2", b: samtools-1.11.tar.bz2 }
+      - { a: "https://github.com/samtools/bcftools/releases/download/1.11/bcftools-1.11.tar.bz2", b: bcftools-1.11.tar.bz2 }
+
+  - name: Extract Samtools archives
     unarchive:
-      src:  '{{ item }}'
+      src:  "/media/penelopeprime/.tools/{{ item }}"
       dest: /usr/local/
       remote_src: yes
       mode: '0777'
     with_items:
-      - "https://github.com/samtools/htslib/releases/download/1.11/htslib-1.11.tar.bz2"
-      - "https://github.com/samtools/samtools/releases/download/1.11/samtools-1.11.tar.bz2"
-      - "https://github.com/samtools/bcftools/releases/download/1.11/bcftools-1.11.tar.bz2"
+      - htslib-1.11.tar.bz2
+      - samtools-1.11.tar.bz2
+      - bcftools-1.11.tar.bz2
 
   - name: Install Samtools dependencies
     apt:

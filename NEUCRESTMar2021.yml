@@ -1,0 +1,114 @@
+---
+- name: NEUCREST March 2021 (Virtual) build playbook on 02-02-2021
+  hosts: coursevm
+  gather_facts: no
+  become: yes
+  become_method: sudo
+  tasks:
+  - name: Install Ubuntu Repo based tools
+    apt:
+      name: "{{ packages }}"
+      update_cache: yes
+    vars:
+      packages:
+      - autoconf
+      - libtool
+      - aptitude
+      - openjdk-8-jre
+      - openjdk-8-jre-headless
+      - openjdk-8-jdk
+      - default-jre
+      - gdebi
+      - git
+      - libcanberra-gtk3-module
+      - libcanberra-gtk-module
+      - libxml2-dev
+      - libxml2
+      - liblzma-dev
+      - curl
+      - libcurl4-openssl-dev
+      - build-essential
+      - python3
+      - python3-pip
+      - python-pip
+      - subversion
+      - libmotif-dev
+      - libxbae4m
+      - grace
+      - zlib1g-dev
+      - libbz2-dev
+      - libncurses5-dev
+      - libncursesw5-dev
+      - liblzma-dev
+      - gcc
+      - make
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - expect
+      - axel
+      - libcairo2-dev
+      - libhdf5-dev
+
+# Installing Tools #######################################################################
+
+  - include: tools-yml/R-40.yaml
+  - include: tools-yml/anaconda3.yaml
+  - include: tools-yml/samtools-1.11.yaml
+
+# Extra Tool specific config ##############################################################
+
+  - name: Install Jupyter etc
+    shell: pip3 install -U jupyter pandas matplotlib requests numpy scipy gdown
+
+  - name: Fill in R specific pkg installer file
+    blockinfile:
+      path: /usr/local/pkg_install.R
+      block: |
+        if (!requireNamespace("BiocManager"))
+          install.packages("BiocManager")
+        BiocManager::install(update = TRUE, ask = FALSE)
+        BiocManager::install(c("Seurat", "hdf5r", "ggplot2", "pheatmap", "DESeq2"), ask = FALSE)
+
+  - name: Install R specific pkgs
+    shell: Rscript /usr/local/pkg_install.R
+    become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
+
+  - name: Create Conda environment file
+    file:
+      path: /usr/local/environment.yml
+      state: touch
+      mode: '0777'
+
+  - name: Fill in Conda environment file
+    blockinfile:
+      path: /usr/local/environment.yml
+      block: |
+        name: RNA
+        channels:
+          - conda-forge
+          - bioconda
+        dependencies:
+          - python
+          - r-essentials
+          - r-base
+          - star
+          - htseq
+          - pip
+          - r-curl
+          - samtools
+          - jupyterlab
+          - bioconductor-deseq2
+          - r-hdf5r
+          - r-seurat
+          - r-pheatmap
+          - r-ggplot2
+
+  - name: Install Conda environment
+    shell: conda env create -f /usr/local/environment.yml || conda env update -f /usr/local/environment.yml
+    #become: yes
+    become_user: training
+    args:
+      chdir: /home/training/
